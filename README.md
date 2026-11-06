@@ -1,12 +1,14 @@
-# HR Recruitment AI Agent
+# Order Tracking Workflow
 
-An n8n pipeline that receives job applications, classifies each candidate with Gemini, notifies the recruiter on Telegram, and lets the recruiter accept or reject with one button tap.
+An n8n webhook workflow that receives a WooCommerce order event, verifies its HMAC signature, registers the order in a tracking sheet through a Google Apps Script web app, and emails the customer a personal tracking link.
 
 ## Overview
 
-Recruitment teams spend a lot of time on repetitive steps: copying application data, checking for duplicates, sorting candidates by seniority, and sending standard replies. This workflow automates that routine for a **Data Analyst** opening while keeping the final accept/reject decision with a human.
+Online stores often need to give customers a way to follow their order without exposing the store's back office. This workflow connects a WooCommerce store to a lightweight tracking page: when an order reaches the processing stage, the order is recorded in a Google Sheet (via Apps Script) and the customer receives an email containing the tracking URL returned by that script.
 
-It is useful for small HR teams or hiring managers who collect applications through a form and track candidates in Google Sheets.
+It is useful for small e-commerce teams that want automated customer notifications without a dedicated order-tracking plugin. Because the endpoint is public, the workflow validates the webhook signature before doing anything else.
+
+It was built as a project in the Digital Egypt Pioneers Initiative (DEPI) AI Automation track and tested with Postman requests that simulate the WooCommerce webhook.
 
 ## Architecture
 
@@ -14,112 +16,93 @@ It is useful for small HR teams or hiring managers who collect applications thro
 
 ```mermaid
 flowchart TD
-    subgraph A["Flow 1: Application intake"]
-        F["Form Trigger<br/>On form submission"] --> DC["Google Sheets<br/>Duplicate Check"]
-        DC --> IF{"Email already<br/>exists?"}
-        IF -- "Yes" --> DUP["Telegram<br/>Duplicated Candidate Message"]
-        IF -- "No" --> AG["AI Agent"]
-        GEM["Google Gemini<br/>Chat Model"] -. "language model" .-> AG
-        AG --> EF["Edit Fields"]
-        EF --> ALL["Google Sheets<br/>Add To All Candidates Sheet<br/>Status = Pending"]
-        ALL --> LVL["Google Sheets<br/>Add To Specific Level Sheet"]
-        LVL --> NH["Telegram<br/>Notify The HR<br/>Accept / Reject buttons"]
-    end
+    WH["Webhook: Order Webhook<br/>POST /order-update, raw body kept"] --> TF{"Topic =<br/>order.processing?"}
+    TF -- "No" --> IG["Respond: Ignored"]
+    TF -- "Yes" --> HM["Crypto: Calculate HMAC Signature<br/>base64, raw body"]
+    HM --> SV{"Signature valid?"}
 
-    subgraph B["Flow 2: Recruiter decision"]
-        TT["Telegram Trigger<br/>callback_query"] --> CODE["Code in JavaScript<br/>parse action, email, level"]
-        CODE --> AR{"action = accept?"}
-        AR -- "Accept" --> AE["Gmail<br/>Accepted Email"]
-        AE --> UA["Google Sheets<br/>Update Status To Accepted"]
-        AR -- "Reject" --> RE["Gmail<br/>Rejected Email"]
-        RE --> UR["Google Sheets<br/>Update Status To Rejected"]
-        UR --> GR["Google Sheets<br/>Get row(s) in level sheet"]
-        GR --> DEL["Google Sheets<br/>Delete Candidate From Level Sheet"]
-    end
+    SV -- "Yes" --> EX["Set: Extract Order Fields"]
+    EX --> SAN["Code: Sanitize Data"]
+    SAN --> UT["HTTP Request: Update Tracking Sheet<br/>Apps Script POST"]
+    UT --> US{"Update successful?"}
+    US -- "Yes" --> BE["Set: Build Customer Email"]
+    BE --> SE["Gmail: Send Tracking Email"]
+    SE --> RS["Respond: Success<br/>HTTP 200"]
 
-    NH -. "button tap" .-> TT
+    SV -- "No" --> BF["Set: Build Failure Log"]
+    US -- "No" --> BF
+    BF --> LF["HTTP Request: Log Failure<br/>Apps Script POST"]
+    LF --> RU["Respond: Unauthorized<br/>HTTP 401"]
 ```
 
 ## How it works
 
-**Flow 1: Application intake**
-
-1. A candidate submits the "Data Analyst Job Application" form (name, email, phone, skills, experience range, optional note).
-2. `Duplicate Check` looks up the email in the `ALL Candidates` sheet.
-3. If the email is found, a Telegram message warns the recruiter that a duplicate application was attempted, and the flow stops.
-4. Otherwise, the `AI Agent` (Gemini) classifies the candidate as `JUNIOR`, `MID_LEVEL`, `SENIOR` or `EXPERT` and returns `{"level": "..."}`.
-5. The candidate is appended to `ALL Candidates` with `Status = Pending`, then to the sheet tab named after the level.
-6. The recruiter receives a Telegram message with the candidate summary and two inline buttons: **Accept & Schedule** and **Rejected**.
-
-**Flow 2: Recruiter decision**
-
-1. Tapping a button triggers the Telegram `callback_query` trigger.
-2. A Code node reads the action from the callback data, and extracts the candidate email and level from the original message text with regular expressions.
-3. **Accept:** a Gmail message is sent to the candidate, then the status in `ALL Candidates` is updated to `Accepted`.
-4. **Reject:** a Gmail message is sent, the status is updated to `Rejected`, and the candidate's row is looked up and deleted from the level sheet.
+1. **Receive.** `Order Webhook` accepts `POST /order-update`. The raw request body is preserved so the signature can be verified byte for byte. The workflow answers through Respond to Webhook nodes.
+2. **Filter by topic.** `Is Order Processing?` continues only when the `x-wc-webhook-topic` header equals `order.processing`. Any other topic is acknowledged immediately by `Respond: Ignored`.
+3. **Verify the signature.** `Calculate HMAC Signature` computes a base64 HMAC of the raw body using the secret stored in an n8n Crypto credential. `Signature Valid?` compares it with the `x-wc-webhook-signature` header.
+4. **Prepare the data.** `Extract Order Fields` maps the order ID, customer name, customer email and status. `Sanitize Data` strips line breaks, trims whitespace, and defaults `status_step` to 1 when it is missing or not numeric.
+5. **Register the order.** `Update Tracking Sheet` posts the order (JSON plus a shared secret) to the Apps Script web app. The request is set not to fail the run on errors, so the response is always inspected.
+6. **Check the result.** `Update Successful?` passes when the response contains `ok: true` or an HTTP 2xx status.
+7. **Notify the customer.** `Build Customer Email` creates the subject and an HTML body containing the `tracker_url` returned by Apps Script. `Send Tracking Email` sends it through Gmail, and `Respond: Success` returns HTTP 200 to WooCommerce.
+8. **Failure path.** An invalid signature or a failed sheet update goes to `Build Failure Log`, then `Log Failure` reports the event to Apps Script, and `Respond: Unauthorized` returns HTTP 401 with `{ "ok": false, "error": ... }`.
 
 ## Tech stack
 
 | Tool | Used for |
 |---|---|
-| n8n | Workflow orchestration (Form Trigger, Telegram Trigger, If, Set, Code nodes) |
-| Google Gemini (via n8n AI Agent node) | Classifying candidates into four seniority levels |
-| Google Sheets | Candidate database, per-level tabs, duplicate lookup, status tracking |
-| Telegram Bot API | Recruiter notifications and inline Accept/Reject buttons |
-| Gmail | Acceptance and rejection emails to candidates |
-| JavaScript (Code node) | Parsing the button callback and the Telegram message text |
+| n8n | Webhook, If, Set, Code, Crypto, HTTP Request and Respond to Webhook nodes |
+| WooCommerce | Source of the order webhook |
+| n8n Crypto node | HMAC-based verification of the webhook signature |
+| Google Apps Script (web app) | Writing the order to the tracking sheet and returning a tracking URL |
+| Google Sheets | Tracking data store (behind the Apps Script, not part of this repo) |
+| Gmail | Sending the tracking email to the customer |
+| JavaScript (Code node) | Input sanitisation |
 
 ## Key features and design decisions
 
-- **Strict model output.** The system prompt requires a JSON object with a single `level` key limited to four values, and forbids explanations or extra text. This keeps the downstream sheet routing predictable.
-- **Prompt hygiene.** The prompt tells the model to treat candidate-provided content as untrusted, to ignore embedded instructions, and not to use name, email, phone or other personal characteristics for the classification.
-- **Duplicate protection.** The email is checked before any AI call or write. `Duplicate Check` has `alwaysOutputData` and `retryOnFail` enabled, so an empty lookup still reaches the `If` node.
-- **Dynamic routing by level.** The level-sheet node takes its tab name from the AI result, so there is one node for all four tabs.
-- **Human in the loop.** The system never decides on its own: the AI only classifies, and the recruiter confirms each candidate.
-- **Defensive parsing.** The Code node tolerates `Email`, `E-mail` and `Candidate Email` labels and several spellings of `MID_LEVEL`, and falls back to `unknown` / `UNKNOWN` instead of throwing.
-- **Status lifecycle.** `Pending`, `Accepted` and `Rejected` are tracked in the master sheet.
+- **Signed requests only.** The signature is verified before any data is processed or any email is sent; mismatches never reach the sheet or the customer.
+- **Raw body hashing.** `rawBody` is enabled on the webhook so the HMAC is calculated on the original payload rather than on re-serialised JSON.
+- **Cheap rejection of irrelevant events.** Other topics are acknowledged right away, so the webhook sender does not retry them.
+- **Input hygiene.** Line breaks are removed and values trimmed before the data is sent to the sheet.
+- **Explicit upstream result check.** The Apps Script call does not throw on errors; success is decided from the `ok` flag or the HTTP status, and both outcomes are routed deliberately.
+- **Single failure handler.** Both failure causes share one logging and response path.
+- **Documented canvas.** Each section carries a sticky note describing its purpose, and the overview note lists the setup checklist.
 
 ## Setup
 
-**Accounts needed:** n8n (cloud or self-hosted, reachable over HTTPS for the Telegram trigger), Google account, Telegram bot (via BotFather), Gmail account, Google AI Studio API key.
+**Accounts needed:** n8n instance reachable over HTTPS, a WooCommerce store, a Google account with an Apps Script web app (and its sheet), and a Gmail account.
 
 1. Import `workflow.json` in n8n (**Workflows → Import from file**).
 2. Create these credentials and attach them to the matching nodes (the JSON contains the names only):
-   - `Google Sheets account` (OAuth2)
-   - `Telegram account` (bot token)
-   - `Gmail account` (OAuth2)
-   - `Google Gemini(PaLM) Api account` (API key)
-3. Create a Google spreadsheet with these tabs:
-   - `ALL Candidates` with columns `Name, Email, Phone, Skills, Experience, Level, Status`
-   - `JUNIOR`, `MID_LEVEL`, `SENIOR`, `EXPERT`, each with columns `Name, Email, Phone, Skills, Experience`
-4. Replace the placeholders:
+   - `Crypto account`: holds the WooCommerce webhook secret used for the HMAC
+   - `Gmail account 3` (OAuth2): used by `Send Tracking Email`
+3. Replace the placeholders in both HTTP Request nodes (`Update Tracking Sheet` and `Log Failure`):
 
-| Placeholder | Where | Replace with |
-|---|---|---|
-| `YOUR_SHEET_ID` | All Google Sheets nodes | Select your spreadsheet again in each node |
-| `YOUR_TELEGRAM_CHAT_ID` | `Notify The HR`, `Duplicated Candidate Message` | The recruiter's Telegram chat ID |
-| `[Insert Calendly or Scheduling Link Here]` | `Accepted Email` | Your scheduling link |
+| Placeholder | Replace with |
+|---|---|
+| `YOUR_APPS_SCRIPT_DEPLOYMENT_ID` | The deployment ID in your Apps Script web app URL |
+| `YOUR_SHARED_SECRET` | The shared secret your Apps Script checks |
 
-5. Activate the workflow and submit a test application using the form's test URL.
+4. Make sure your Apps Script matches the contract used here. It receives JSON with `secret`, `order_id`, `customer_name`, `customer_email` and `status_step`, and returns `ok` and `tracker_url`. The failure log request sends the fields `event` and `secter` (the node uses this exact spelling), so the script must read the same names. The Apps Script code is not included in this repository.
+5. In WooCommerce, create a webhook whose delivery URL is the **production** URL of `/webhook/order-update`, using the same secret as the Crypto credential. The workflow was developed against Postman requests, so before connecting a live store compare its real deliveries with what the workflow expects: the `x-wc-webhook-topic` value checked by `Is Order Processing?`, and the payload fields read by `Extract Order Fields` (`id`, `customer.email`, `customer.name`, `status`).
+6. Run a test, then publish the workflow.
 
 ## Screenshots
 
-**Recruiter notification in Telegram** (candidate details redacted)
+The canvas screenshot above shows the full workflow with its sections.
 
-![Telegram notification](assets/telegram-notification.png)
+<!-- Add a screenshot of the tracking email (with fictional data) in assets/ and embed it here. -->
 
-**Candidate sheet** (candidate details redacted). The row shows the final `Rejected` status after a button tap.
+## Possible improvements
 
-![Google Sheet](assets/google-sheet-candidates.png)
+These come from reading the workflow JSON and are worth testing before production use.
 
-## Known issues and possible improvements
-
-These come from reading the workflow JSON; they are worth testing before production use.
-
-- **Level name normalisation.** The Code node converts `MID_LEVEL` to `MID LEVEL` (with a space), and that value is used as the sheet tab name in the reject path (`Get row(s) in sheet`, `Delete Candidate From Level Sheet`). The append step uses `MID_LEVEL`. Keeping one canonical value would make both paths consistent.
-- **Email personalisation.** The email templates use a `name` field that the Code node does not output, so the greeting falls back to "Candidate". The acceptance email also contains a fixed sentence about specific skills and a scheduling-link placeholder.
-- **Telegram callback.** `callback_query_id` is extracted but no node acknowledges the callback, so the recruiter gets no confirmation and the buttons stay active. Telegram also limits `callback_data` to 64 bytes, which a long email plus level could exceed.
-- **Double decisions.** The current status is not checked before sending an email, so pressing both buttons would send two emails.
-- **Data stored.** The `Note` field is used by the AI but not saved to the sheet; `Skills` and `Experience` are stored wrapped in quotes.
-- **Error handling.** There is no error workflow or retry on the Gmail, Telegram and Gemini steps.
-- **Scale.** The prompt and form are specific to a Data Analyst role; parameterising the role would make the pipeline reusable.
+- **Shared secret handling.** The shared secret lives inside the HTTP Request nodes. Moving it to an n8n credential (or environment variable) would keep it out of the exported workflow.
+- **Failure path references.** `Build Failure Log` reads values from `Sanitize Data` and `Update Tracking Sheet`. On the invalid-signature path those nodes have not run, so the lookups may fail instead of producing the intended log; test this path explicitly.
+- **Status codes.** The 401 response is also returned when the sheet update fails. A 5xx code for upstream errors would let WooCommerce and monitoring tell the two cases apart.
+- **Failure details.** `Build Failure Log` prepares the order ID, reason and timestamp, but `Log Failure` only sends the event name and the secret.
+- **Success response.** `Respond: Success` returns the whole Apps Script response object to WooCommerce, which includes the tracking URL. A minimal `{ "ok": true }` would be safer.
+- **HTML escaping.** The customer name and order ID are inserted into the email HTML without escaping.
+- **Unused mappings.** `Extract Order Fields` also maps `sig`, `event_topic` (from the computed HMAC value) and `secret` (from the `postman-token` header, a leftover of Postman testing); none of them is used by the sheet request. Removing them would simplify the data flow.
+- **Duplicate deliveries.** There is no check for the same order being delivered twice, so a repeated webhook would send another email.
+- **Observability.** Failures are logged only to Apps Script; an alert to the store owner would shorten reaction time.
