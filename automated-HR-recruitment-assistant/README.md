@@ -1,16 +1,22 @@
-# HR Recruitment AI Agent
+# AI Recruitment Assistant (HR Recruitment AI Agent)
 
-An n8n pipeline that receives job applications, classifies each candidate with Gemini, notifies the recruiter on Telegram, and lets the recruiter accept or reject with one button tap.
+[← Back to portfolio](../README.md)
 
-## Overview
+## 1. Project Overview
 
-Recruitment teams spend a lot of time on repetitive steps: copying application data, checking for duplicates, sorting candidates by seniority, and sending standard replies. This workflow automates that routine for a **Data Analyst** opening while keeping the final accept/reject decision with a human.
-
-It is useful for small HR teams or hiring managers who collect applications through a form and track candidates in Google Sheets.
-
-## Architecture
+An n8n pipeline that receives job applications, classifies each candidate with Google Gemini, notifies the recruiter on Telegram, and lets the recruiter accept or reject with one button tap. The final decision always stays with a human.
 
 ![n8n workflow canvas](assets/n8n-workflow-canvas.png)
+
+## 2. Business Problem
+
+Recruitment teams spend a lot of time on repetitive steps: copying application data, checking for duplicates, sorting candidates by seniority and sending standard replies. This workflow automates that routine for a **Data Analyst** opening and is useful for small HR teams or hiring managers who collect applications through a form and track candidates in Google Sheets.
+
+## 3. Proposed Solution
+
+Two linked flows: an **intake flow** (form → duplicate check → AI classification → sheets → Telegram notification) and a **decision flow** (Telegram button → email → status update). The AI only classifies seniority; the recruiter confirms every candidate.
+
+## 4. System Architecture
 
 ```mermaid
 flowchart TD
@@ -40,7 +46,28 @@ flowchart TD
     NH -. "button tap" .-> TT
 ```
 
-## How it works
+## 5. Key Features
+
+- **Strict model output.** The system prompt requires a JSON object with a single `level` key limited to four values, and forbids explanations or extra text. This keeps the downstream sheet routing predictable.
+- **Prompt hygiene.** The prompt tells the model to treat candidate-provided content as untrusted, to ignore embedded instructions, and not to use name, email, phone or other personal characteristics for the classification.
+- **Duplicate protection.** The email is checked before any AI call or write. `Duplicate Check` has `alwaysOutputData` and `retryOnFail` enabled, so an empty lookup still reaches the `If` node.
+- **Dynamic routing by level.** The level-sheet node takes its tab name from the AI result, so there is one node for all four tabs.
+- **Human in the loop.** The system never decides on its own: the AI only classifies, and the recruiter confirms each candidate.
+- **Defensive parsing.** The Code node tolerates `Email`, `E-mail` and `Candidate Email` labels and several spellings of `MID_LEVEL`, and falls back to `unknown` / `UNKNOWN` instead of throwing.
+- **Status lifecycle.** `Pending`, `Accepted` and `Rejected` are tracked in the master sheet.
+
+## 6. Technology Stack
+
+| Tool | Used for |
+|---|---|
+| n8n | Workflow orchestration (Form Trigger, Telegram Trigger, If, Set, Code nodes) |
+| Google Gemini (via n8n AI Agent node) | Classifying candidates into four seniority levels |
+| Google Sheets | Candidate database, per-level tabs, duplicate lookup, status tracking |
+| Telegram Bot API | Recruiter notifications and inline Accept/Reject buttons |
+| Gmail | Acceptance and rejection emails to candidates |
+| JavaScript (Code node) | Parsing the button callback and the Telegram message text |
+
+## 7. Workflow Execution
 
 **Flow 1: Application intake**
 
@@ -58,28 +85,22 @@ flowchart TD
 3. **Accept:** a Gmail message is sent to the candidate, then the status in `ALL Candidates` is updated to `Accepted`.
 4. **Reject:** a Gmail message is sent, the status is updated to `Rejected`, and the candidate's row is looked up and deleted from the level sheet.
 
-## Tech stack
+## 8. Project Structure
 
-| Tool | Used for |
-|---|---|
-| n8n | Workflow orchestration (Form Trigger, Telegram Trigger, If, Set, Code nodes) |
-| Google Gemini (via n8n AI Agent node) | Classifying candidates into four seniority levels |
-| Google Sheets | Candidate database, per-level tabs, duplicate lookup, status tracking |
-| Telegram Bot API | Recruiter notifications and inline Accept/Reject buttons |
-| Gmail | Acceptance and rejection emails to candidates |
-| JavaScript (Code node) | Parsing the button callback and the Telegram message text |
+```text
+automated-HR-recruitment-assistant/
+├── README.md
+├── workflow.json            # n8n export (primary file, documented here)
+├── hr-ai-agent.json         # second export of the same workflow (see note)
+└── assets/
+    ├── n8n-workflow-canvas.png
+    ├── telegram-notification.png
+    └── google-sheet-candidates.png
+```
 
-## Key features and design decisions
+> **Note.** `hr-ai-agent.json` and `workflow.json` have the same 19 nodes and identical connections. They differ in placeholder values and in the text of several node parameters (including the Code node). This README describes `workflow.json`. Keep one of them as the canonical export.
 
-- **Strict model output.** The system prompt requires a JSON object with a single `level` key limited to four values, and forbids explanations or extra text. This keeps the downstream sheet routing predictable.
-- **Prompt hygiene.** The prompt tells the model to treat candidate-provided content as untrusted, to ignore embedded instructions, and not to use name, email, phone or other personal characteristics for the classification.
-- **Duplicate protection.** The email is checked before any AI call or write. `Duplicate Check` has `alwaysOutputData` and `retryOnFail` enabled, so an empty lookup still reaches the `If` node.
-- **Dynamic routing by level.** The level-sheet node takes its tab name from the AI result, so there is one node for all four tabs.
-- **Human in the loop.** The system never decides on its own: the AI only classifies, and the recruiter confirms each candidate.
-- **Defensive parsing.** The Code node tolerates `Email`, `E-mail` and `Candidate Email` labels and several spellings of `MID_LEVEL`, and falls back to `unknown` / `UNKNOWN` instead of throwing.
-- **Status lifecycle.** `Pending`, `Accepted` and `Rejected` are tracked in the master sheet.
-
-## Setup
+## 9. Installation & Configuration
 
 **Accounts needed:** n8n (cloud or self-hosted, reachable over HTTPS for the Telegram trigger), Google account, Telegram bot (via BotFather), Gmail account, Google AI Studio API key.
 
@@ -102,7 +123,7 @@ flowchart TD
 
 5. Activate the workflow and submit a test application using the form's test URL.
 
-## Screenshots
+## 10. Screenshots & Demonstrations
 
 **Recruiter notification in Telegram** (candidate details redacted)
 
@@ -112,9 +133,9 @@ flowchart TD
 
 ![Google Sheet](assets/google-sheet-candidates.png)
 
-## Known issues and possible improvements
+## 11. Limitations & Future Improvements
 
-These come from reading the workflow JSON; they are worth testing before production use.
+Identified by reading the workflow JSON; test before any production use.
 
 - **Level name normalisation.** The Code node converts `MID_LEVEL` to `MID LEVEL` (with a space), and that value is used as the sheet tab name in the reject path (`Get row(s) in sheet`, `Delete Candidate From Level Sheet`). The append step uses `MID_LEVEL`. Keeping one canonical value would make both paths consistent.
 - **Email personalisation.** The email templates use a `name` field that the Code node does not output, so the greeting falls back to "Candidate". The acceptance email also contains a fixed sentence about specific skills and a scheduling-link placeholder.
@@ -123,3 +144,7 @@ These come from reading the workflow JSON; they are worth testing before product
 - **Data stored.** The `Note` field is used by the AI but not saved to the sheet; `Skills` and `Experience` are stored wrapped in quotes.
 - **Error handling.** There is no error workflow or retry on the Gmail, Telegram and Gemini steps.
 - **Scale.** The prompt and form are specific to a Data Analyst role; parameterising the role would make the pipeline reusable.
+
+## 12. Project Status
+
+Workflow exported and documented, with redacted screenshots from a test run. The known issues above should be tested before production use. No deployment or hiring metrics are claimed.

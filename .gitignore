@@ -15,3 +15,9 @@ raw-exports/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Private career materials (CV, contact details) - never publish
+career-materials/
+*.docx
+MY-CV.pdf
+Omar_Ayman_Fathi_CV.*

@@ -1,0 +1,15 @@
+{
+  "_demo_notice": "SYNTHETIC DEMONSTRATION DATA. Illustrative run; the tracker URL and Apps Script response are assumed examples, not output of a real deployment.",
+  "description": "Illustrative response of the Apps Script web app (contract: returns ok and tracker_url). The real script is not in this repository.",
+  "response": {
+    "headers": {
+      "content-type": "application/json"
+    },
+    "statusCode": 200,
+    "statusMessage": "OK",
+    "body": {
+      "ok": true,
+      "tracker_url": "https://tracking.example.com/track?order=10482&token=DEMO-TOKEN"
+    }
+  }
+}
