@@ -1,0 +1,17 @@
+# Secrets and environment
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
+secrets*
+
+# Original (unsanitized) n8n exports
+originals/
+raw-exports/
+*_original.json
+*-original.json
+
+# OS files
+.DS_Store
+Thumbs.db
