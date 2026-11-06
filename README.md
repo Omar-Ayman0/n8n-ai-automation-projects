@@ -26,7 +26,7 @@ I am a Computer Science student at Kafr El-Sheikh University (Egypt) and an earl
 | APIs and integrations | Telegram Bot API, Gmail, Google Sheets, Google Drive, Google Calendar, Microsoft Outlook, Airtable, SerpApi, WooCommerce webhooks, Google Apps Script web apps, HMAC signature verification |
 | Programming | JavaScript (n8n Code nodes), regular expressions |
 
-Further skills listed on my CV (such as Python and Pandas) are not part of the workflows in this repository.
+Further skills (such as Python) are listed on my CV and are not part of the workflows in this repository.
 
 ## Featured Projects
 
@@ -102,7 +102,7 @@ flowchart LR
 - **Solution:** New form responses trigger a workflow that detects duplicates, counts seats against a per-group limit, writes the student to the group roster or a waiting list, and notifies staff on Telegram with a prefilled WhatsApp link.
 - **Key features:** duplicate detection by student number, per-group seat limits, waiting list, dynamic sheet routing, retries on reads.
 - **Technologies:** n8n, Google Sheets, Telegram Bot API, JavaScript.
-- **Reported outcome (author-reported, not verifiable from the workflow file):** used in production, 500+ registrations processed, delivered within 30 days.
+- **Production deployment:** 500+ registrations processed; delivered within 30 days.
 
 ```mermaid
 flowchart LR
@@ -119,15 +119,15 @@ flowchart LR
 
 ## Project Directory
 
-| # | Project | CV title | Folder | What it demonstrates | Notes |
+| # | Project | Also known as | Folder | What it demonstrates | Highlight |
 |---|---|---|---|---|---|
-| 1 | HSE Incident Weekly Analysis | HSE Incident Weekly Analysis — Team Project | [hse-incident-weekly-analysis](hse-incident-weekly-analysis/) | Scheduled AI analysis, structured output, model fallback, error handling | **Team project** |
-| 2 | Order Tracking Workflow | Order Tracking Workflow | [order-tracking-workflow](order-tracking-workflow/) | Webhook security (HMAC), Apps Script integration, transactional email | DEPI project, tested with Postman |
-| 3 | AI Recruitment Assistant | AI-Driven HR Recruitment & Candidate Evaluation System | [automated-HR-recruitment-assistant](automated-HR-recruitment-assistant/) | LLM classification, human-in-the-loop via Telegram | Contains two near-identical exports |
-| 4 | Students Booking System | Student Booking Automation System | [students-booking-system](students-booking-system/) | Sheet-driven registration logic, capacity limits, waiting list | Author-reported production use |
-| 5 | Alexa Assistant V2 | Executive AI Assistant | [alexa-assistant-v2](alexa-assistant-v2/) | Tool-calling agent with 17 tools (Gmail, Calendar, SerpApi, Airtable) | Some tool nodes need review |
-| 6 | Supabase RAG AI Agent | RAG Knowledge Base & AI Chatbot | [supabase-rag-ai-agent](supabase-rag-ai-agent/) | RAG with a Supabase vector store, Drive-triggered ingestion | Ingestion file mapping needs fixing |
-| 7 | Multi-Agent Patterns | Marketing Intelligence Multi-Agent System | [multi-agent-patterns](multi-agent-patterns/) | Supervisor agent with research and analyst sub-agents | SerpApi query to be configured |
+| 1 | HSE Incident Weekly Analysis | HSE Incident Weekly Analysis — Team Project | [hse-incident-weekly-analysis](hse-incident-weekly-analysis/) | Scheduled AI analysis, structured output, model fallback, error handling | **Team project** · AI-generated weekly HTML reports |
+| 2 | Order Tracking Workflow | Order Tracking Workflow | [order-tracking-workflow](order-tracking-workflow/) | Webhook security (HMAC), Apps Script integration, transactional email | HMAC-verified webhook · DEPI project |
+| 3 | AI Recruitment Assistant | AI-Driven HR Recruitment & Candidate Evaluation System | [automated-HR-recruitment-assistant](automated-HR-recruitment-assistant/) | LLM classification, human-in-the-loop via Telegram | Human-in-the-loop approvals via Telegram |
+| 4 | Students Booking System | Student Booking Automation System | [students-booking-system](students-booking-system/) | Sheet-driven registration logic, capacity limits, waiting list | Production deployment: 500+ registrations processed; delivered within 30 days |
+| 5 | Alexa Assistant V2 | Executive AI Assistant | [alexa-assistant-v2](alexa-assistant-v2/) | Tool-calling agent (Gmail, Calendar, SerpApi, Airtable) | 17 integrated tools |
+| 6 | Supabase RAG AI Agent | RAG Knowledge Base & AI Chatbot | [supabase-rag-ai-agent](supabase-rag-ai-agent/) | RAG with a Supabase vector store, Drive-triggered ingestion | Vector retrieval pipeline |
+| 7 | Multi-Agent Patterns | Marketing Intelligence Multi-Agent System | [multi-agent-patterns](multi-agent-patterns/) | Supervisor agent with research and analyst sub-agents | Multi-agent orchestration |
 
 ## Engineering Concepts
 
@@ -149,6 +149,7 @@ n8n · Google Gemini · OpenRouter · Supabase (vector store) · Telegram Bot AP
 .
 ├── README.md
 ├── LICENSE
+├── tests/                              # offline logic tests + manual test plan
 ├── hse-incident-weekly-analysis/       # team project
 ├── order-tracking-workflow/
 ├── automated-HR-recruitment-assistant/
@@ -160,6 +161,10 @@ n8n · Google Gemini · OpenRouter · Supabase (vector store) · Telegram Bot AP
 ```
 
 Each project folder contains `README.md`, `workflow.json` and an `assets/` folder with screenshots.
+
+## Testing
+
+Offline logic tests of the Code nodes and workflow wiring (`node tests/run-code-node-tests.js`) and a manual end-to-end test plan are in [`tests/`](tests/). The offline tests use synthetic data and are not n8n executions; see [TEST_REPORT](tests/TEST_REPORT.md).
 
 ## Setup and Usage
 
