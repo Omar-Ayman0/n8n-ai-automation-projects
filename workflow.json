@@ -1,355 +1,74 @@
 {
-  "name": "Order Tracking Workflow",
+  "name": "HSE Incident Weekly Analysis",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🛒 Order Tracking Workflow\n**WooCommerce → Tracking Link Email for the Customer**\n\nReceives a WooCommerce webhook when an order moves to *processing*, verifies its HMAC signature, registers the order in the tracking sheet (Google Apps Script) and emails the customer a personal tracking link.\n\n**Flow:** Webhook → Topic filter → Signature check → Prepare data → Update tracking sheet → Email customer → Respond 200\n**On failure:** log the event → respond 401\n\n**Endpoint:** `POST /webhook/order-update`\n\n### Setup checklist\n1. Select the **Crypto** credential (WooCommerce webhook secret)\n2. Connect the **Gmail OAuth2** credential\n3. Set the **Apps Script URL** and shared secret in both HTTP Request nodes\n4. Create the WooCommerce webhook pointing to the *Production* URL\n5. Run a test, then **Publish** the workflow",
-        "height": 480,
-        "width": 1020,
-        "color": 7
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        0,
-        -540
-      ],
-      "id": "2cc97bc8-a2cf-45b1-ab2e-0689e3ea1e6a",
-      "name": "Sticky - Overview"
-    },
-    {
-      "parameters": {
-        "content": "### 1. Webhook & Topic Filter\nReceives the WooCommerce POST on `/order-update` (raw body is kept for the signature check).\n\n- **Is Order Processing?** continues only when header `x-wc-webhook-topic` = `order.processing`\n- Any other topic is acknowledged right away and ignored",
-        "height": 650,
-        "width": 540,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ],
-      "id": "b2d16e11-45ca-444d-9a06-14140eb53edc",
-      "name": "Sticky - 1 Trigger"
-    },
-    {
-      "parameters": {
-        "content": "### 2. Signature Verification\nBlocks forged or tampered requests.\n\n- **Calculate HMAC Signature** hashes the raw body (base64)\n- **Signature Valid?** compares it with header `x-wc-webhook-signature`\n- Mismatch → *Failure Handling* (section 6)",
-        "height": 470,
-        "width": 540,
-        "color": 5
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        600,
-        0
-      ],
-      "id": "361d94d3-b463-4abb-8a52-eecce32c6c2d",
-      "name": "Sticky - 2 Signature"
-    },
-    {
-      "parameters": {
-        "content": "### 3. Prepare Data\nBuilds a clean, safe payload for the sheet.\n\n- **Extract Order Fields:** order ID, customer name & email, status\n- **Sanitize Data:** removes line breaks, trims spaces, defaults `status_step` to 1",
-        "height": 470,
-        "width": 540,
-        "color": 2
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        1200,
-        0
-      ],
-      "id": "f3735bb3-8440-4c28-a4ac-720fb15c410e",
-      "name": "Sticky - 3 Prepare"
-    },
-    {
-      "parameters": {
-        "content": "### 4. Update Tracking Sheet\nSends the order to the Google Apps Script web app (JSON + shared secret).\n\n- Errors never stop the run, the response is always inspected\n- **Update Successful?** checks the `ok` flag or HTTP 2xx\n- ✅ true → email the customer  ·  ❌ false → Failure Handling",
-        "height": 470,
-        "width": 540,
-        "color": 6
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        1800,
-        0
-      ],
-      "id": "87c2f47d-4f83-4488-996a-7a331dd3013d",
-      "name": "Sticky - 4 Tracking Sheet"
-    },
-    {
-      "parameters": {
-        "content": "### 5. Notify Customer\n- **Build Customer Email:** subject + HTML body with the `tracker_url` returned by Apps Script\n- **Send Tracking Email:** sent through Gmail\n- **Respond: Success:** returns HTTP 200 to WooCommerce with the Apps Script response",
-        "height": 470,
-        "width": 840,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        2400,
-        0
-      ],
-      "id": "93a3e319-cea7-4158-8cad-4a147a715b68",
-      "name": "Sticky - 5 Success"
-    },
-    {
-      "parameters": {
-        "content": "### 6. Failure Handling\nReached when the signature is invalid or the sheet update fails.\n\n- **Build Failure Log:** event, order ID, reason, timestamp\n- **Log Failure:** reports the event to Apps Script\n- **Respond: Unauthorized:** returns HTTP 401 `{ ok: false, error }`",
-        "height": 470,
-        "width": 840,
-        "color": 3
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        1500,
-        720
-      ],
-      "id": "ec5cb06c-cf3b-4f59-bf59-1d30ed4b05f3",
-      "name": "Sticky - 6 Failure"
-    },
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "order-update",
-        "responseMode": "responseNode",
-        "options": {
-          "rawBody": true
-        }
-      },
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        60,
-        290
-      ],
-      "id": "24948fe3-6f37-4331-a331-257d98491915",
-      "name": "Order Webhook",
-      "notes": "POST /order-update",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
+        "rule": {
+          "interval": [
             {
-              "id": "bef8519e-4e62-4ec0-b334-58de63f26de9",
-              "leftValue": "={{ $json.headers['x-wc-webhook-topic'] }}",
-              "rightValue": "order.processing",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        300,
-        290
-      ],
-      "id": "ed875c1c-9249-407c-87b4-ff2c5888e61b",
-      "name": "Is Order Processing?",
-      "notes": "topic = order.processing",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "action": "hmac",
-        "binaryData": true,
-        "dataPropertyName": "calculated_data",
-        "encoding": "base64"
-      },
-      "type": "n8n-nodes-base.crypto",
-      "typeVersion": 2,
-      "position": [
-        660,
-        290
-      ],
-      "id": "8c91da59-a97d-4a4d-b73e-3e19ce93e577",
-      "name": "Calculate HMAC Signature",
-      "credentials": {
-        "crypto": {
-          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
-          "name": "Crypto account"
-        }
-      },
-      "notes": "HMAC of raw body",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        300,
-        480
-      ],
-      "id": "0d7c8a79-b80e-44c4-8654-2ac550d20195",
-      "name": "Respond: Ignored",
-      "notes": "acknowledge & skip",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "163cc098-de93-48b7-9609-60662ee4afc0",
-              "leftValue": "={{ $json.headers['x-wc-webhook-signature'] }}",
-              "rightValue": "={{ $json.calculated_data }}",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        900,
-        290
-      ],
-      "id": "56e4356d-ac0b-4923-a6b4-7726bcf7dfc1",
-      "name": "Signature Valid?",
-      "notes": "header = calculated",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "7cf6a3cc-dbde-424c-85f0-cf6adf794607",
-              "name": "order_id",
-              "value": "={{ $json.body.id }}",
-              "type": "number"
-            },
-            {
-              "id": "9177df95-5413-424a-9b67-0046876dcd33",
-              "name": "customer_email",
-              "value": "={{ $json.body.customer.email }}",
-              "type": "string"
-            },
-            {
-              "id": "7ebdf286-79ac-472e-bfe1-c14aeb8f595b",
-              "name": "sig",
-              "value": "={{ $json.headers['x-wc-webhook-signature'] }}",
-              "type": "string"
-            },
-            {
-              "id": "668b0440-3b59-4168-a40c-d97a656f0845",
-              "name": "customer_name",
-              "value": "={{ $json.body.customer.name }}",
-              "type": "string"
-            },
-            {
-              "id": "503a5b24-ad61-4fa6-bed1-7c98ad91bc31",
-              "name": "event_topic",
-              "value": "={{ $json.calculated_data }}",
-              "type": "string"
-            },
-            {
-              "id": "319af6f5-4e6f-485e-bf21-8ed322e0f5e4",
-              "name": "order_status",
-              "value": "={{ $json.body.status }}",
-              "type": "string"
-            },
-            {
-              "id": "25e3fc13-f5ac-4d7c-a94a-66e9fa6a91c9",
-              "name": "secret",
-              "value": "={{ $json.headers['postman-token'] }}",
-              "type": "string"
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
             }
           ]
-        },
-        "options": {}
+        }
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
+      "id": "374578c8-5e65-4adc-8fc0-56c536e8d444",
+      "name": "Weekly Monday 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
       "position": [
-        1260,
-        290
-      ],
-      "id": "dc2161f8-a646-46da-9923-451a3867ff4c",
-      "name": "Extract Order Fields",
-      "notes": "id, name, email, status",
-      "notesInFlow": true
+        480,
+        480
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const src = $json || {};\nfunction cleanStr(v, space = '') {\n  let s = v == null ? '' : String(v);\n  s = s.replace(/[\\r\\n]+/g, space);\n  if (space === ' ') s = s.replace(/\\s{2,}/g, ' ');\n  return s.trim();\n}\n \nconst out = {\n  order_id: cleanStr(src.order_id || src.body?.order_id || src.id || src.order?.id || src.body?.order?.id),\n  customer_name: cleanStr(\n    src.customer_name || src.body?.customer_name ||\n    (((src.billing?.first_name || src.body?.billing?.first_name || '') + ' ' +\n      (src.billing?.last_name  || src.body?.billing?.last_name  || '')).trim()),\n    ' '\n  ),\n  status_step: Number(cleanStr(src.status_step || src.body?.status_step || 1)),\n  customer_email: cleanStr(src.customer_email || src.body?.customer_email || src.billing?.email || src.body?.billing?.email),\n  secret: cleanStr(src.secret || src.body?.secret || '')\n};\n \nif (!Number.isFinite(out.status_step)) out.status_step = 1;\nreturn [{ json: out }];"
+        "operation": "getAll",
+        "returnAll": true,
+        "output": "raw",
+        "filtersUI": {
+          "values": {
+            "filters": {
+              "readStatus": "both",
+              "receivedAfter": "={{ $now.minus({days:7}).toUTC().toISO() }}",
+              "sender": "={{ $json.Sender }}"
+            }
+          }
+        },
+        "options": {}
       },
+      "id": "5c9b7f6f-f52c-4ed1-9acf-1e6497b259b6",
+      "name": "Get Incident Emails",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        560
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const EXPECTED = $(\"Workflow Config\").first().json.Sender.toLowerCase();\nconst MAX_BODY = 6000;\nconst now = new Date();\nconst from = new Date(now.getTime() - 7 * 24 * 3600 * 1000);\nconst emails = [];\n\nfor (const item of $input.all()) {\n  const m = item.json;\n  if (!m || !m.id) continue;\n\n  const addr = (m.from && m.from.emailAddress && m.from.emailAddress.address) || (m.sender && m.sender.emailAddress && m.sender.emailAddress.address) || '';\n  if (addr.toLowerCase() !== EXPECTED) continue;\n\n  const received = m.receivedDateTime ? new Date(m.receivedDateTime) : null;\n  if (received && received < from) continue;\n\n  let body = (m.body && m.body.content) || m.bodyPreview || '';\n  body = body\n    .replace(/<script[\\s\\S]*?<\\/script>/gi, ' ')\n    .replace(/<style[\\s\\S]*?<\\/style>/gi, ' ')\n    .replace(/<[^>]+>/g, ' ')\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&amp;/gi, '&')\n    .replace(/&lt;/gi, '<')\n    .replace(/&gt;/gi, '>')\n    .replace(/\\s+/g, ' ')\n    .trim();\n  if (body.length > MAX_BODY) body = body.slice(0, MAX_BODY) + ' [truncated]';\n\n  emails.push({\n    id: m.id,\n    subject: m.subject || '',\n    received: m.receivedDateTime || '',\n    hasAttachments: !!m.hasAttachments,\n    body: body\n  });\n}\n\nreturn [{ json: {\n  count: emails.length,\n  periodFrom: from.toISOString().slice(0, 10),\n  periodTo: now.toISOString().slice(0, 10),\n  emails: emails\n} }];"
+      },
+      "id": "d53dd6d6-d55e-431a-9af8-8f82a3eb0107",
+      "name": "Clean and Prepare",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
-        290
-      ],
-      "id": "9e534714-1caa-4469-8a9b-9a1ddccd3af7",
-      "name": "Sanitize Data",
-      "notes": "clean payload",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n\n  \"secret\": \"YOUR_SHARED_SECRET\",\n\n  \"order_id\": \"{{ $json.order_id }}\",\n\n  \"customer_name\": \"{{ $json.customer_name }}\",\n\n  \"customer_email\": \"{{ $json.customer_email }}\",\n\n  \"status_step\": \"{{ $json.status_step }}\"\n\n}\n ",
-        "options": {
-          "redirect": {
-            "redirect": {
-              "maxRedirects": 302
-            }
-          },
-          "response": {
-            "response": {
-              "fullResponse": true,
-              "neverError": true,
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        1860,
-        290
-      ],
-      "id": "95129e38-b059-445b-b677-d8d94bbb2a7e",
-      "name": "Update Tracking Sheet",
-      "notes": "Apps Script POST",
-      "notesInFlow": true
+        1344,
+        560
+      ]
     },
     {
       "parameters": {
@@ -358,106 +77,463 @@
             "caseSensitive": true,
             "leftValue": "",
             "typeValidation": "strict",
-            "version": 3
+            "version": 2
           },
           "conditions": [
             {
-              "id": "6013a08e-1833-4aa9-957e-3828cb20ff03",
-              "leftValue": "={{ Boolean($json.ok ?? $json.body?.ok ?? ($json.statusCode >= 200 && $json.statusCode < 300)) }}",
-              "rightValue": "",
+              "leftValue": "={{ $json.count }}",
               "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
             }
           ],
           "combinator": "and"
         },
         "options": {}
       },
+      "id": "b9b5636d-8f96-4c19-830e-2c3c097d118a",
+      "name": "Any Incidents?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        2100,
-        290
-      ],
-      "id": "2c207ab7-131f-427a-b365-ad1c66180059",
-      "name": "Update Successful?",
-      "notes": "ok / HTTP 2xx",
-      "notesInFlow": true
+        1648,
+        560
+      ]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.to }}",
-        "subject": "={{ $json.subject }}",
+        "promptType": "define",
+        "text": "=Period: {{ $json.periodFrom }} to {{ $json.periodTo }}\nTotal incident emails: {{ $json.count }}\n\nEmails (JSON):\n{{ JSON.stringify($json.emails) }}",
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=ROLE: You are an HSE (Health, Safety and Environment) incident analyst at a container terminal. You receive the incident notification emails of one reporting period and turn them into a factual analysis for the HSE manager.\n\nFIELDS TO EXTRACT FROM EACH EMAIL: date (date and time of the incident), type, severity (Low / Medium / High / Critical), location, injuries (people involved / injuries), root_cause, corrective_actions, status.\n\nMISSING DATA RULE: If a field is not clearly written in the email, write \"Not specified\". Never guess, infer or invent a value. Do not use knowledge from outside the emails.\n\nTOOLS: The emails are already given to you in the user message. Use tools only when you need more detail:\n- Get Message: when a body looks truncated, empty or unclear. Pass the email id.\n- Get Attachments: when hasAttachments is true. Pass the email id, then mention the attachment names in the incident details. If you cannot read the attachment content, say it was noted but not read.\n- Get Previous Emails: once, to compare with the previous period when you look for trends. Use dates before the current period start. Use the result only for comparison in trends_and_patterns, never count old incidents in the totals.\n\nCROSS-INCIDENT ANALYSIS: Count incidents by severity, by type and by location. Find repeated root causes, repeated locations and repeated equipment. Raise a risk alert for every High or Critical incident and for every repeated issue. Give 3 to 5 concrete, actionable recommendations that follow from the data.\n\nOUTPUT RULE: Return ONLY the raw JSON object matching the root schema directly. Do NOT wrap the response inside an \"output\" key, and do NOT use markdown code blocks.",
+          "maxIterations": 12
+        }
+      },
+      "id": "1b30ac51-47aa-470e-8760-7c700c2e93fa",
+      "name": "HSE Incident Analyst",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1952,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "bb8cb3e2-2849-4857-858a-e2a919c006ba",
+      "name": "Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2432,
+        976
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Fetch the full email message by its message Id when the email body is truncated, empty, or unclear.",
+        "operation": "get",
+        "messageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('messageId', 'The id of the Outlook message to open in full') }}"
+        },
+        "options": {}
+      },
+      "id": "e25db64b-e40f-441e-80c9-30c0063343d9",
+      "name": "Get Message",
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        976
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "List all attachments of an incident email by its message Id when has Attachments is true.",
+        "resource": "messageAttachment",
+        "operation": "getAll",
+        "messageId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('messageId', 'The id of the email whose attachments should be listed') }}"
+        },
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "dc64ae12-080e-4431-a84e-da09d95614ae",
+      "name": "Get Attachments",
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        2752,
+        976
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Retrieve earlier incident emails from the same sender from previous weeks for historical trend comparison.",
+        "operation": "getAll",
+        "limit": 20,
+        "filtersUI": {
+          "values": {
+            "filters": {
+              "readStatus": "both",
+              "receivedAfter": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('afterDate', 'ISO date: start of the earlier comparison period, for example 14 days before today') }}",
+              "receivedBefore": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('beforeDate', 'ISO date: start of the current analysis period') }}",
+              "sender": "={{ $('Workflow Config').item.json.Sender }}"
+            }
+          }
+        },
+        "options": {}
+      },
+      "id": "2a51c2db-f43c-43eb-88d0-17ab20ef7165",
+      "name": "Get Previous Emails",
+      "type": "n8n-nodes-base.microsoftOutlookTool",
+      "typeVersion": 2,
+      "position": [
+        2928,
+        976
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"period\": { \"type\": \"string\" },\n    \"total_incidents\": { \"type\": \"number\" },\n    \"incidents\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"date\": { \"type\": \"string\" },\n          \"type\": { \"type\": \"string\" },\n          \"severity\": { \"type\": \"string\" },\n          \"location\": { \"type\": \"string\" },\n          \"injuries\": { \"type\": \"string\" },\n          \"root_cause\": { \"type\": \"string\" },\n          \"corrective_actions\": { \"type\": \"string\" },\n          \"status\": { \"type\": \"string\" }\n        },\n        \"required\": [\"date\", \"type\", \"severity\", \"location\", \"injuries\", \"root_cause\", \"corrective_actions\", \"status\"]\n      }\n    },\n    \"by_severity\": {\n      \"type\": \"object\",\n      \"additionalProperties\": { \"type\": \"number\" }\n    },\n    \"by_type\": {\n      \"type\": \"object\",\n      \"additionalProperties\": { \"type\": \"number\" }\n    },\n    \"by_location\": {\n      \"type\": \"object\",\n      \"additionalProperties\": { \"type\": \"number\" }\n    },\n    \"trends_and_patterns\": { \"type\": \"string\" },\n    \"risk_alerts\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" }\n    },\n    \"recommendations\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" }\n    }\n  },\n  \"required\": [\n    \"period\",\n    \"total_incidents\",\n    \"incidents\",\n    \"by_severity\",\n    \"by_type\",\n    \"by_location\",\n    \"trends_and_patterns\",\n    \"risk_alerts\",\n    \"recommendations\"\n  ]\n}"
+      },
+      "id": "79b2b686-8957-4a6d-af75-fe771c374aff",
+      "name": "Incident Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        3088,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json.output || {};\n\nconst esc = (v) => {\n  const s = (v === undefined || v === null || v === '') ? 'Not specified' : String(v);\n  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;');\n};\n\nconst TD = 'style=\"border:1px solid #ddd;padding:6px 8px;vertical-align:top;\"';\nconst TH = 'style=\"border:1px solid #ddd;padding:6px 8px;background:#1f3a5f;color:#fff;text-align:left;\"';\nconst TABLE = 'style=\"border-collapse:collapse;width:100%;font-size:13px;margin-bottom:16px;\"';\n\nconst list = (arr) => (Array.isArray(arr) && arr.length)\n  ? '<ul>' + arr.map((x) => '<li>' + esc(x) + '</li>').join('') + '</ul>'\n  : '<p>None</p>';\n\nconst counts = (title, obj) => {\n  const rows = Object.entries(obj || {}).map(([k, v]) => '<tr><td ' + TD + '>' + esc(k) + '</td><td ' + TD + '>' + esc(v) + '</td></tr>').join('');\n  return '<h3>' + title + '</h3><table ' + TABLE + '><tr><th ' + TH + '>Category</th><th ' + TH + '>Count</th></tr>' + rows + '</table>';\n};\n\nconst incidents = Array.isArray(r.incidents) ? r.incidents : [];\nconst incidentRows = incidents.map((i) =>\n  '<tr>' +\n  ['date', 'type', 'severity', 'location', 'injuries', 'root_cause', 'corrective_actions', 'status']\n    .map((k) => '<td ' + TD + '>' + esc(i[k]) + '</td>').join('') +\n  '</tr>'\n).join('');\n\nconst risks = Array.isArray(r.risk_alerts) ? r.risk_alerts : [];\nconst riskBox = risks.length\n  ? '<div style=\"background:#fdecea;border-left:5px solid #c62828;padding:10px 14px;margin:14px 0;\"><h3 style=\"margin:0 0 6px 0;color:#c62828;\">Risk Alerts</h3>' + list(risks) + '</div>'\n  : '';\n\nconst html =\n  '<div style=\"font-family:Arial,sans-serif;color:#222;max-width:900px;\">' +\n  '<h2>Incident Analysis</h2>' +\n  '<p><b>Period:</b> ' + esc(r.period) + '<br><b>Total incidents:</b> ' + esc(r.total_incidents) + '</p>' +\n  riskBox +\n  '<h3>All Incidents</h3>' +\n  '<table ' + TABLE + '><tr>' +\n  ['Date', 'Type', 'Severity', 'Location', 'Injuries', 'Root cause', 'Corrective actions', 'Status'].map((h) => '<th ' + TH + '>' + h + '</th>').join('') +\n  '</tr>' + incidentRows + '</table>' +\n  counts('By Severity', r.by_severity) +\n  counts('By Type', r.by_type) +\n  counts('By Location', r.by_location) +\n  '<h3>Trends and Patterns</h3><p>' + esc(r.trends_and_patterns) + '</p>' +\n  '<h3>Recommendations</h3>' + list(r.recommendations) +\n  '</div>';\n\nreturn [{ json: { html: html } }];"
+      },
+      "id": "782e010c-e376-42c5-beda-972c5ee98b73",
+      "name": "Build HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Workflow Config').item.json.Sender }}",
+        "subject": "incident analysis",
         "message": "={{ $json.html }}",
         "options": {
           "appendAttribution": false
         }
       },
+      "id": "170d8584-edb1-4a5d-bdf5-96f0fed891e1",
+      "name": "Send Incident Analysis",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        2700,
-        290
+        2624,
+        544
       ],
-      "id": "d7ffc9e3-648f-48fc-ab60-9b42c99cd08b",
-      "name": "Send Tracking Email",
+      "retryOnFail": true,
       "credentials": {
         "gmailOAuth2": {
           "id": "REPLACE_WITH_YOUR_CREDENTIAL",
           "name": "Gmail account 3"
         }
-      },
-      "notes": "send: message",
-      "notesInFlow": true
+      }
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($node[\"Update Tracking Sheet\"].json || { ok: true }) }}\n ",
+        "sendTo": "={{ $('Workflow Config').item.json.Sender }}",
+        "subject": "incident analysis",
+        "message": "=<h2>Incident Analysis</h2><p>No incidents were received between {{ $json.periodFrom }} and {{ $json.periodTo }}. The monitoring system is running normally.</p>",
         "options": {
-          "responseCode": 200
+          "appendAttribution": false
         }
       },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
+      "id": "93cc294b-5934-4d8e-bb41-03e548434c98",
+      "name": "Send No Incidents Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
-        2940,
-        290
+        1856,
+        864
       ],
-      "id": "41ae229e-e8bf-41d4-a694-9f6ea81a1f65",
-      "name": "Respond: Success",
-      "notes": "HTTP 200",
-      "notesInFlow": true
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "c9dba516-6773-4c0b-b221-86d2a2b587f5",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        480,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## HSE Incident Weekly Analysis\nEvery Monday 08:00 (Cairo): read incident emails from Outlook, analyze them with an AI agent, and send an alert via Gmail (subject: incident analysis).\n\n**Flow:** Triggers → Fetch and clean → Any incidents? → AI agent → HTML report → Gmail.\n\n**Setup checklist**\n1. Connect the Microsoft Outlook credential (4 nodes)\n2. Change the test recipient in all three Gmail nodes\n3. Publish the Gmail consent screen (not Testing)\n4. Set this workflow as its own Error workflow (Workflow Settings)\n5. Publish the workflow after testing",
+        "height": 330,
+        "width": 760,
+        "color": 7
+      },
+      "id": "79f2fe18-2f25-46bd-bbb0-b7fc96f57af0",
+      "name": "Note - Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        720,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Triggers\nSchedule: every Monday 08:00.\nManual trigger: for testing, so you never wait a week.",
+        "height": 484,
+        "width": 260,
+        "color": 4
+      },
+      "id": "915abc40-46ff-4f78-89df-4381e864974c",
+      "name": "Note - Triggers",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        416,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Fetch and clean\nOutlook filters by sender and last 7 days (read status: both).\nAlways Output Data is ON so the empty case still reaches the IF.\nCode node: checks sender, strips HTML, truncates body to 6000 chars, returns one item with count, period and emails.",
+        "height": 380,
+        "width": 700,
+        "color": 5
+      },
+      "id": "962e099a-937d-4302-99cf-7965390a51c3",
+      "name": "Note - Fetch and Clean",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        816,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Branch\ncount > 0: go to the AI agent.\ncount = 0: send a short no-incidents email.",
+        "height": 316,
+        "width": 260
+      },
+      "id": "d670865e-567e-4a02-b9b7-1c70f482a4b9",
+      "name": "Note - Branch",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## No incidents path\nSo the manager knows the system is alive.",
+        "height": 272,
+        "width": 300
+      },
+      "id": "2ecb7c16-9f14-4ee4-a9e0-8219f48b535d",
+      "name": "Note - No Incidents",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        752
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Agent sub-nodes\nGemini chat model, 3 Outlook tools (Get Message, Get Attachments, Get Previous Emails via $fromAi) and the Structured Output Parser.\nCheck the $fromAi fields on the first test run.",
+        "height": 300,
+        "width": 1016,
+        "color": 2
+      },
+      "id": "8245a6fa-34a6-4737-8373-5d94578e265e",
+      "name": "Note - Agent Tools",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2208,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. Report and send\nCode node builds the HTML report (every value is HTML-escaped).\nGmail sends it with subject incident analysis; it lands in the Sent folder.",
+        "height": 332,
+        "width": 520,
+        "color": 6
+      },
+      "id": "88d95618-39b7-4548-9291-4115204ae889",
+      "name": "Note - Report and Send",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        368
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        992
+      ],
+      "id": "39f25c94-49c5-4b34-85b5-30c0bb78c63b",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "content": "## Error handling\nWhen any node fails, an alert email is sent with the workflow name, failed node, error message and execution link.\nSet this workflow as the Error workflow in Workflow Settings.",
+        "height": 340,
+        "width": 560,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        832
+      ],
+      "id": "ca9efe85-f1d6-405a-bdea-473e0b08c83b",
+      "name": "Note - Error Handling"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=HSE workflow failed: {{ $json.workflow.name }}",
+        "emailType": "text",
+        "message": "=Workflow: {{ $json.workflow.name }}\nFailed node: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\nExecution: {{ $json.execution.url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1440,
+        992
+      ],
+      "id": "0dd1631c-b372-4381-b045-de5bd58eed26",
+      "name": "Gmail: Error Alert",
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2272,
+        976
+      ],
+      "id": "28c12670-6c6a-4f86-aa4f-f1c50f9d94bf",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 4. AI agent\nEmails are passed in the prompt, so the agent never forgets one.\nSystem prompt: role, fields, Not specified rule, tool usage, analysis, output rule.\nTemperature 0.1 for factual extraction.",
+        "height": 356,
+        "width": 300,
+        "color": 2
+      },
+      "id": "32ac8828-5fd4-4c9e-9097-7d98607cdb09",
+      "name": "Note - AI Agent",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        320
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
             {
-              "id": "e042e220-9974-45fb-af2a-de0980e62472",
-              "name": "event",
-              "value": "faild_update",
+              "id": "sender-field",
+              "name": "Sender",
+              "value": "incident-reports@example.com",
               "type": "string"
             },
             {
-              "id": "17b42700-85d2-4f32-a98a-098944050db4",
-              "name": "order_id",
-              "value": "={{ $('Sanitize Data').item.json.order_id }}",
-              "type": "string"
-            },
-            {
-              "id": "27ba6861-5178-419c-aa71-c5608c1dfb7a",
-              "name": "reason",
-              "value": "={{$node[\"Update Tracking Sheet\"].json.error || $node[\"Update Tracking Sheet\"].json.body?.error || \"unknown\"}}",
-              "type": "string"
-            },
-            {
-              "id": "aa835820-0c84-425d-8f40-cc732144ab4c",
-              "name": "ts",
-              "value": "={{ new Date().toISOString() }}",
+              "id": "recipient-field",
+              "name": "Recipient",
+              "value": "you@example.com",
               "type": "string"
             }
           ]
@@ -467,261 +543,180 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.5,
       "position": [
-        1560,
-        1010
+        896,
+        560
       ],
-      "id": "3f957134-f103-4ee8-896d-5a11eda85c4c",
-      "name": "Build Failure Log",
-      "notes": "event, reason, ts",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "a374fb0a-21f1-4824-9fd1-f18597327f4b",
-              "name": "to",
-              "value": "={{ $('Extract Order Fields').item.json.customer_email }}",
-              "type": "string"
-            },
-            {
-              "id": "dcd6821b-c5b2-49c4-b26d-5482fa093041",
-              "name": "subject",
-              "value": "=Order Update - Tracking Link For Order  {{ $('Sanitize Data').item.json.order_id }}",
-              "type": "string"
-            },
-            {
-              "id": "5796932b-0a7e-4306-9748-2dd1dc289272",
-              "name": "html",
-              "value": "=<div style=\"font-family:Arial,sans-serif;\">\n<h2>Order Tracking</h2>\n<p>Hello {{$node[\"Sanitize Data\"].json.customer_name}},</p>\n<p>Your order <strong>#{{$node[\"Sanitize Data\"].json.order_id}}</strong> is being processed.</p>\n<p><a href=\"{{$node[\"Update Tracking Sheet\"].json.body.tracker_url}}\">Click here to track your order</a></p>\n</div>",
-              "type": "string"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.5,
-      "position": [
-        2460,
-        290
-      ],
-      "id": "c5db49cb-9546-44f7-ad09-48bd5b1cf424",
-      "name": "Build Customer Email",
-      "notes": "subject + HTML",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "event",
-              "value": "={{$node[\"Build Failure Log\"].json.event}}"
-            },
-            {
-              "name": "secter",
-              "value": "YOUR_SHARED_SECRET"
-            }
-          ]
-        },
-        "options": {
-          "redirect": {
-            "redirect": {
-              "maxRedirects": 302
-            }
-          },
-          "response": {
-            "response": {
-              "fullResponse": true,
-              "neverError": true
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        1800,
-        1010
-      ],
-      "id": "6a0286f9-cc70-45ed-b870-395c87956024",
-      "name": "Log Failure",
-      "notes": "Apps Script POST",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "{\"ok\": false, \"error\": \"unauthorized or upstream error\"}\n ",
-        "options": {
-          "responseCode": 401
-        }
-      },
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.5,
-      "position": [
-        2040,
-        1010
-      ],
-      "id": "9ebedc98-3f51-4786-a1f2-4728cc6ae17b",
-      "name": "Respond: Unauthorized",
-      "notes": "HTTP 401",
-      "notesInFlow": true
+      "id": "df133506-003a-4c38-8581-6193c28e7fc8",
+      "name": "Workflow Config"
     }
   ],
   "connections": {
-    "Order Webhook": {
+    "Weekly Monday 08:00": {
       "main": [
         [
           {
-            "node": "Is Order Processing?",
+            "node": "Workflow Config",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Is Order Processing?": {
+    "Get Incident Emails": {
       "main": [
         [
           {
-            "node": "Calculate HMAC Signature",
+            "node": "Clean and Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean and Prepare": {
+      "main": [
+        [
+          {
+            "node": "Any Incidents?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Incidents?": {
+      "main": [
+        [
+          {
+            "node": "HSE Incident Analyst",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Respond: Ignored",
+            "node": "Send No Incidents Email",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Calculate HMAC Signature": {
+    "HSE Incident Analyst": {
       "main": [
         [
           {
-            "node": "Signature Valid?",
+            "node": "Build HTML Report",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Signature Valid?": {
+    "Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "HSE Incident Analyst",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Message": {
+      "ai_tool": [
+        [
+          {
+            "node": "HSE Incident Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Attachments": {
+      "ai_tool": [
+        [
+          {
+            "node": "HSE Incident Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Previous Emails": {
+      "ai_tool": [
+        [
+          {
+            "node": "HSE Incident Analyst",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Incident Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "HSE Incident Analyst",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HTML Report": {
       "main": [
         [
           {
-            "node": "Extract Order Fields",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Build Failure Log",
+            "node": "Send Incident Analysis",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extract Order Fields": {
+    "Manual Test Trigger": {
       "main": [
         [
           {
-            "node": "Sanitize Data",
+            "node": "Workflow Config",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Sanitize Data": {
+    "Error Trigger": {
       "main": [
         [
           {
-            "node": "Update Tracking Sheet",
+            "node": "Gmail: Error Alert",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update Tracking Sheet": {
-      "main": [
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
         [
           {
-            "node": "Update Successful?",
-            "type": "main",
-            "index": 0
+            "node": "HSE Incident Analyst",
+            "type": "ai_languageModel",
+            "index": 1
           }
         ]
       ]
     },
-    "Update Successful?": {
+    "Workflow Config": {
       "main": [
         [
           {
-            "node": "Build Customer Email",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Build Failure Log",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Tracking Email": {
-      "main": [
-        [
-          {
-            "node": "Respond: Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Customer Email": {
-      "main": [
-        [
-          {
-            "node": "Send Tracking Email",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Failure Log": {
-      "main": [
-        [
-          {
-            "node": "Log Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log Failure": {
-      "main": [
-        [
-          {
-            "node": "Respond: Unauthorized",
+            "node": "Get Incident Emails",
             "type": "main",
             "index": 0
           }
@@ -734,9 +729,9 @@
     "executionOrder": "v1",
     "binaryMode": "separate",
     "timeSavedMode": "fixed",
-    "timezone": "Africa/Cairo",
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timezone": "Africa/Cairo"
   },
   "tags": []
 }
