@@ -1,0 +1,401 @@
+{
+  "name": "Multi-Agent System",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -304,
+        -352
+      ],
+      "id": "4e9f0e0e-c051-4a32-b1ff-814149581f81",
+      "name": "Telegram Trigger",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -128,
+        -112
+      ],
+      "id": "54fee19c-dc09-4c0d-ba64-129e01c29a92",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=You are the supervisor agent.\n \nYou coordinate two specialized agents:\n \n- Search Agent: searches the web and collects marketing research.\n- Analyst Agent: analyzes the collected research and creates a report.\n \nFollow this workflow:\n \n1. Understand the user's request.\n2. Call the Search Agent.\n3. Give the Search Agent's complete result to the Analyst Agent.\n4. Return the Analyst Agent's report to the user.\n \nImportant:\n- Always use the Search Agent for web research.\n- Always use the Analyst Agent after receiving the research.\n- Do not invent research or statistics.\n- Do not perform web searches yourself.\n- Dont make the output too long (between 750 character)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -48,
+        -352
+      ],
+      "id": "bc4df5af-f460-4abf-a3c1-40c04e40fbda",
+      "name": "Supervisor"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        336
+      ],
+      "id": "531c03f5-ccdf-4592-a71f-f0b53883c0f8",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        384
+      ],
+      "id": "0c53b66f-1022-4ec4-ab70-bf5d3410e41a",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "additionalFields": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-serpapi.serpApiTool",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        336
+      ],
+      "id": "942776b7-3a96-4b92-9e46-03ee44822313",
+      "name": "Google search in SerpApi",
+      "credentials": {
+        "serpApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "SerpApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the internet for recent and reliable marketing information related to the user's request. Return factual findings, statistics, and sources.",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a Search Agent.\n \nYour job is to search the internet for reliable and recent marketing information.\n \nWhen you receive a research question:\n \n1. Search the web.\n2. Find relevant information.\n3. Prefer recent and reliable sources.\n4. Extract important facts and statistics.\n5. Include the source name and URL.\n6. Return the findings clearly.\n \nDo not create a final marketing report.\nDo not invent information.\nDo not invent statistics or sources.\n \nYour output should contain:\n \nResearch Question:\n[question]\n \nKey Findings:\n- Finding 1\n- Finding 2\n- Finding 3\n \nImportant Statistics:\n- Statistic 1\n- Statistic 2\n \nSources:\n- Source 1\n- Source 2\n- Source 3"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        -624,
+        144
+      ],
+      "id": "0dc2c2c1-103b-41cb-a136-f27b90bb6626",
+      "name": "Search & Collect Data Agent"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Analyze the research returned by the Search Agent and create a concise professional marketing report.",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a marketing analyst agent.\n \nYour job is to analyze the research provided by the Search Agent.\n \nDo not search the internet.\n\nDo not invent information.\n\nDo not invent statistics.\n \nAnalyze the provided research and create a concise marketing report.\n \nYour report must contain:\n \n1. Executive Summary\n\n2. Top Marketing Trends\n\n3. Important Statistics\n\n4. Key Insights\n\n5. Marketing Implications\n\n6. Sources\n \nUse only the information provided by the Search Agent.\n "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        544,
+        144
+      ],
+      "id": "35faad02-e9e9-4b45-b7c4-6a76181a9916",
+      "name": "Data Analyst Agent"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output.replace(/[*_`#>|]/g, '').replace(/\\\\n/g, '\\n') }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        304,
+        -352
+      ],
+      "id": "636490e1-8e6b-4db8-863d-64513b5de449",
+      "name": "Send a text message",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Search & Retrieval Sub-Agent",
+        "height": 432,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        80
+      ],
+      "id": "2503292d-084d-43f4-89b2-334511e8789f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Data Analysis Sub-Agent",
+        "height": 448,
+        "width": 560,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        368,
+        80
+      ],
+      "id": "fdfefc27-7b20-4081-bb19-c651d8f3069a",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Orchestrator / Main System",
+        "height": 448,
+        "width": 1120,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        -400
+      ],
+      "id": "585e777d-7211-4599-87fe-2c53bcf12e8c",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -592,
+        336
+      ],
+      "id": "213e6260-bfdd-478f-8fe5-5510101b3198",
+      "name": "Search Agent Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        640,
+        272
+      ],
+      "id": "a99b4de6-a6c9-4019-abbe-52636380a92c",
+      "name": "Data Analyst Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        80,
+        -112
+      ],
+      "id": "00930bbc-dc89-4aaf-8e56-aa34a94755e2",
+      "name": "Supervisor Memory"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Search & Collect Data Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Data Analyst Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google search in SerpApi": {
+      "ai_tool": [
+        [
+          {
+            "node": "Search & Collect Data Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search & Collect Data Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Analyst Agent": {
+      "ai_tool": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supervisor": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Agent Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Search & Collect Data Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Analyst Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Data Analyst Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supervisor Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
