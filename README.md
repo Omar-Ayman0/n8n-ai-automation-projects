@@ -1,188 +1,180 @@
-# Omar Ayman Fathi — AI Automation Engineering Portfolio
+# Intelligent Invoice Processing & Human-in-the-Loop Validation System
 
-**AI Automation Engineer | n8n Workflow Automation | API Integrations**
+[← Back to portfolio](../README.md)
 
-A curated collection of n8n workflows covering AI agents, RAG, human-in-the-loop approvals, signed-webhook integrations and business-process automation. Each project folder contains the importable workflow export, an architecture diagram and documentation of the design, setup, limitations and status.
+![n8n workflow canvas — recorded demo](assets/n8n-workflow-canvas.png)
 
-![n8n](https://img.shields.io/badge/n8n-workflow%20automation-EA4B71?style=flat-square)
-![AI Agents](https://img.shields.io/badge/AI-agents%20%26%20RAG-1F3A5F?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
+## 1. Project Overview
 
-## About
+An n8n workflow that converts PDF invoices and images into structured, reviewable financial records. It combines PDF text extraction, OCR, Google Gemini, JavaScript validation rules and human approval before writing results to Google Sheets.
 
-I am a Computer Science student at Kafr El-Sheikh University (Egypt) and an early-career AI Automation Engineer. I design n8n workflows, integrate REST APIs and business systems, and apply LLMs and AI agents to operational problems. I work as a freelance automation consultant and am an AI Automation trainee and team lead in the Digital Egypt Pioneers Initiative (DEPI).
+Developed in the Digital Egypt Pioneers Initiative (DEPI) AI Automation track with Eng. Alaa EL-Dewer. A recorded test execution demonstrated the scanned-invoice path, email review and ledger output. This is a portfolio prototype, not a deployed accounts-payable product.
 
-**Open to:** junior AI automation and n8n developer roles, workflow automation and AI integration positions, technical internships, AI and automation scholarships, and freelance automation projects.
+## 2. Business Problem
 
-**What this repository shows:** hands-on workflow architecture, AI agent design with prompt-level safeguards, human-in-the-loop decisions, webhook security, data-handling logic in JavaScript, and honest documentation of known limitations.
+Invoices arrive in inconsistent formats: digital PDFs, scanned PDFs and images. Manual entry requires staff to read supplier details, dates, amounts and line items repeatedly. OCR and LLM extraction can reduce that effort, but an apparently valid JSON response may still contain missing fields, incorrect totals or duplicate invoices. A model's own confidence score is not proof of accuracy.
 
-## Technical Skills
+## 3. Proposed Solution
 
-| Area | Demonstrated in this repository |
-|---|---|
-| Workflow automation | n8n, schedule and webhook triggers, Google Sheets and Drive triggers, error-handling paths, retries, loops |
-| AI and LLMs | AI Agent nodes, tool-calling agents, multi-agent (supervisor) design, structured output parsing, model fallback, Google Gemini, OpenRouter, prompt design |
-| RAG | Supabase vector store, embeddings, retrieval-as-tool, Drive-triggered ingestion |
-| APIs and integrations | Telegram Bot API, Gmail, Google Sheets, Google Drive, Google Calendar, Microsoft Outlook, Airtable, SerpApi, WooCommerce webhooks, Google Apps Script web apps, HMAC signature verification |
-| Programming | JavaScript (n8n Code nodes), regular expressions |
+Use the PDF text layer when sufficient, fall back to OCR when necessary, and normalize the extracted text before passing it to Gemini. Validate the resulting structured data with deterministic business rules. Records without flags proceed automatically; flagged records pause for a human Approve/Reject decision. Store the completed record, validation flags and review outcome in a ledger.
 
-Further skills (such as Python) are listed on my CV and are not part of the workflows in this repository.
-
-## Featured Projects
-
-### 1. HSE Incident Weekly Analysis — Team Project
-
-> Developed collaboratively by a team; see the [Team & Collaboration](hse-incident-weekly-analysis/README.md#team--collaboration) section. It is not presented as individual work.
-
-- **Business problem:** HSE managers compile weekly incident summaries by hand from notification emails.
-- **Solution:** A scheduled n8n workflow reads a week of Outlook incident emails, has an AI agent extract severity, root causes and trends into a validated JSON schema, and emails an HTML report every Monday at 08:00 (Cairo time).
-- **Key features:** Gemini primary model with OpenRouter fallback; Outlook tools for the agent; structured output parser; HTML-escaped report; "no incidents" heartbeat email; dedicated error-alert path.
-- **Technologies:** n8n, Google Gemini, OpenRouter, Microsoft Outlook, Gmail, JavaScript.
+## 4. System Architecture
 
 ```mermaid
-flowchart LR
-    A["Schedule<br/>Mon 08:00"] --> B["Outlook<br/>last 7 days"] --> C["Clean and<br/>prepare"] --> D{"Any<br/>incidents?"}
-    D -- "No" --> E["No-incidents<br/>email"]
-    D -- "Yes" --> F["AI Agent<br/>structured output"] --> G["HTML report"] --> H["Gmail"]
+flowchart TD
+    WH["POST /invoice-intake<br/>Header authentication"] --> FT{"File type?"}
+    FT -- PDF --> PDF["Extract PDF text"]
+    FT -- PDF original --> M["Merge: re-attach binary"]
+    PDF --> M
+    M --> T{"At least 50 characters<br/>per page on average?"}
+    FT -- Image --> OCR["OCR.space API"]
+    FT -- Unsupported --> X["Stop: unsupported type"]
+    T -- No --> OCR
+    T -- Yes --> N["Normalize text and digits"]
+    OCR --> N
+    N --> L["Gemini + structured output parser"]
+    L --> V["JavaScript validation and flags"]
+    V --> R{"Needs review?"}
+    R -- Yes --> H["Gmail: Send and Wait<br/>Approve / Reject + comment"]
+    R -- No --> B["Build ledger row"]
+    H --> B
+    B --> A["All sheet"]
+    B --> S{"Route ledger status"}
+    S -- Auto / human approved --> P["Approved sheet"]
+    S -- Human rejected --> J["Rejected sheet"]
+    S -- Other --> U["No classification"]
 ```
 
-![HSE workflow canvas](hse-incident-weekly-analysis/assets/n8n-workflow-canvas.png)
+The diagram describes the included workflow, which contains a small routing correction relative to the recorded demo (see section 12).
 
-**[Read the full case study →](hse-incident-weekly-analysis/README.md)** · [Sample report (demo data)](hse-incident-weekly-analysis/samples/README.md)
+## 5. Key Features
 
----
+- **Authenticated intake:** a header-authenticated POST webhook accepts one invoice in binary field `file`.
+- **Hybrid extraction:** digital PDFs use their text layer where sufficient; images and low-text PDFs use OCR.space. A Merge node preserves the original binary for fallback.
+- **Text normalization:** JavaScript removes control characters and normalizes Arabic-Indic and Persian digits and separators to ASCII.
+- **Structured AI extraction:** Gemini returns invoice metadata, amounts and line items using a JSON schema. Prompt instructions treat document text as untrusted data, discourage guessing and request uncertainty indicators.
+- **Deterministic validation:** business rules check missing fields, dates, amounts, arithmetic, source-text presence and extraction quality independently of model confidence.
+- **Human-in-the-loop:** flagged invoices trigger a Gmail custom form; execution resumes after the reviewer responds.
+- **Traceable output:** 20 ledger fields preserve extraction method, flags, status and reviewer decision. Approved and rejected records are separately routed.
+- **Documented canvas:** seven colored sections and two overview notes explain the original architecture.
 
-### 2. Order Tracking Workflow
+## 6. Technology Stack
 
-- **Business problem:** Small online stores need to send customers a tracking link without exposing their back office, and a public webhook must reject forged requests.
-- **Solution:** A WooCommerce webhook triggers an n8n workflow that verifies the HMAC signature, registers the order through a Google Apps Script web app and emails the customer a tracking URL.
-- **Key features:** raw-body HMAC verification, topic filtering, input sanitisation, explicit upstream result check, logged failure path with a 401 response.
-- **Technologies:** n8n, Webhooks, Crypto (HMAC), Google Apps Script, Google Sheets, Gmail.
-- **Context:** built in the DEPI AI Automation track and tested with Postman-simulated webhooks.
+| Tool | Used for |
+| --- | --- |
+| n8n | Webhook, Switch, Extract from File, Merge, IF, HTTP Request, Code and orchestration |
+| OCR.space API | OCR for images and scanned PDFs (English, Engine 2) |
+| Google Gemini | LLM-based extraction of invoice fields |
+| Basic LLM Chain + Structured Output Parser | Schema-based extraction |
+| JavaScript | Text normalization, validation, duplicate hints and ledger construction |
+| Gmail | Send and Wait for Response with a custom review form |
+| Google Sheets | All, Approved and Rejected ledgers |
 
-```mermaid
-flowchart LR
-    A["WooCommerce<br/>webhook"] --> B{"Topic =<br/>order.processing?"}
-    B -- "No" --> X["Respond: Ignored"]
-    B -- "Yes" --> C{"HMAC<br/>valid?"}
-    C -- "Yes" --> D["Sanitize and<br/>update sheet"] --> E["Email tracking link"] --> F["200 OK"]
-    C -- "No" --> G["Log failure"] --> H["401"]
-```
+## 7. Workflow Execution
 
-![Order tracking workflow canvas](order-tracking-workflow/assets/n8n-workflow-canvas.png)
+1. **Receive and classify.** `Receive file (Webhook)` authenticates the request. `Identify File Type` routes by MIME type.
+2. **Extract.** `Extract text layer (PDF)` reads PDF text. `Re-attach original file` combines the result with the original binary by position. `Has text layer?` uses a 50-character-per-page heuristic. Low-text PDFs and images go to `OCR (OCR.space)`; the request enables table recognition, scaling and orientation detection with a 60-second timeout.
+3. **Normalize.** `Normalize & clean text` combines OCR page text, cleans whitespace and digits, and retains metadata (`request_id`, `filename`, extraction method, OCR failure and text length).
+4. **Extract fields.** `Basic LLM Chain` uses Gemini and `Structured Output Parser` to produce supplier name, invoice number, invoice/due dates, currency, subtotal, tax, total, line items, confidence and uncertain fields.
+5. **Validate.** `Validate & score` adds flags using the rules below. Any flag makes `needs_review` true and sets `pending_review`; otherwise status is `auto_approved`.
+6. **Review.** `Needs human review?` sends flagged records to `Send message and wait for response`. The reviewer selects Approve or Reject and may enter a comment. The automatic path bypasses Gmail.
+7. **Persist.** `Build ledger row` adds reviewer decision and status. `All Ledgers` appends the completed record. `Route ledger status` sends approved and rejected statuses to the matching sheet; unknown states are not classified.
 
-**[Read the full case study →](order-tracking-workflow/README.md)** · [Demo package (synthetic data)](order-tracking-workflow/samples/README.md)
+### Validation rules
 
----
+| Rule | Trigger |
+| --- | --- |
+| Required fields | Missing supplier, invoice number, invoice date or total |
+| Dates | Invalid/future invoice date, older than 400 days, or due date before invoice date |
+| Amount | Non-positive total or total above 50,000 currency units |
+| Arithmetic | Subtotal + tax differs from total by more than 0.02 |
+| Line items | Sum of item amounts differs from subtotal by more than 0.05 |
+| Source grounding | Invoice number or total not found in normalized source text |
+| Extraction quality | OCR error, text shorter than 100 characters, confidence below 0.8, or uncertain fields |
+| Possible duplicate | Supplier name + invoice number already seen in workflow static data |
 
-### 3. AI Recruitment Assistant
+Thresholds are demonstration defaults, not accounting policy. The confidence score is model-reported, not calibrated accuracy.
 
-- **Business problem:** Recruiters spend time on duplicate checks, sorting candidates by seniority and standard replies.
-- **Solution:** Applications from a form are checked for duplicates, classified by a Gemini agent into four seniority levels, stored in Google Sheets, and sent to the recruiter on Telegram with Accept and Reject buttons. A button tap triggers the email and status update.
-- **Key features:** strict JSON output from the model, prompt-injection-aware instructions, duplicate protection, human-in-the-loop decision, status lifecycle.
-- **Technologies:** n8n, Google Gemini, Google Sheets, Telegram Bot API, Gmail, JavaScript.
-
-```mermaid
-flowchart LR
-    A["Application<br/>form"] --> B{"Duplicate<br/>email?"}
-    B -- "Yes" --> N["Telegram alert"]
-    B -- "No" --> C["Gemini agent<br/>classify level"] --> D["Google Sheets"] --> E["Telegram<br/>Accept / Reject"]
-    E --> F["Gmail +<br/>status update"]
-```
-
-![HR workflow canvas](automated-HR-recruitment-assistant/assets/n8n-workflow-canvas.png)
-
-**[Read the full case study →](automated-HR-recruitment-assistant/README.md)**
-
----
-
-### 4. Students Booking System
-
-- **Business problem:** A tutoring center handled registrations manually, checking duplicates and group capacity by hand.
-- **Solution:** New form responses trigger a workflow that detects duplicates, counts seats against a per-group limit, writes the student to the group roster or a waiting list, and notifies staff on Telegram with a prefilled WhatsApp link.
-- **Key features:** duplicate detection by student number, per-group seat limits, waiting list, dynamic sheet routing, retries on reads.
-- **Technologies:** n8n, Google Sheets, Telegram Bot API, JavaScript.
-- **Production deployment:** 500+ registrations processed; delivered within 30 days.
-
-```mermaid
-flowchart LR
-    A["New form row"] --> B{"Duplicate?"}
-    B -- "Yes" --> N["Duplicate alert"]
-    B -- "No" --> C{"Group<br/>full?"}
-    C -- "Yes" --> W["Waiting list"] --> M["Telegram"]
-    C -- "No" --> R["Group roster +<br/>master roster"] --> M
-```
-
-![Students booking workflow canvas](students-booking-system/assets/students-booking-system.png)
-
-**[Read the full case study →](students-booking-system/README.md)**
-
-## Project Directory
-
-| # | Project | Also known as | Folder | What it demonstrates | Highlight |
-|---|---|---|---|---|---|
-| 1 | HSE Incident Weekly Analysis | HSE Incident Weekly Analysis — Team Project | [hse-incident-weekly-analysis](hse-incident-weekly-analysis/) | Scheduled AI analysis, structured output, model fallback, error handling | **Team project** · AI-generated weekly HTML reports |
-| 2 | Order Tracking Workflow | Order Tracking Workflow | [order-tracking-workflow](order-tracking-workflow/) | Webhook security (HMAC), Apps Script integration, transactional email | HMAC-verified webhook · DEPI project |
-| 3 | AI Recruitment Assistant | AI-Driven HR Recruitment & Candidate Evaluation System | [automated-HR-recruitment-assistant](automated-HR-recruitment-assistant/) | LLM classification, human-in-the-loop via Telegram | Human-in-the-loop approvals via Telegram |
-| 4 | Students Booking System | Student Booking Automation System | [students-booking-system](students-booking-system/) | Sheet-driven registration logic, capacity limits, waiting list | Production deployment: 500+ registrations processed; delivered within 30 days |
-| 5 | Alexa Assistant V2 | Executive AI Assistant | [alexa-assistant-v2](alexa-assistant-v2/) | Tool-calling agent (Gmail, Calendar, SerpApi, Airtable) | 17 integrated tools |
-| 6 | Supabase RAG AI Agent | RAG Knowledge Base & AI Chatbot | [supabase-rag-ai-agent](supabase-rag-ai-agent/) | RAG with a Supabase vector store, Drive-triggered ingestion | Vector retrieval pipeline |
-| 7 | Multi-Agent Patterns | Marketing Intelligence Multi-Agent System | [multi-agent-patterns](multi-agent-patterns/) | Supervisor agent with research and analyst sub-agents | Multi-agent orchestration |
-
-## Engineering Concepts
-
-- **Human in the loop:** AI classifies, a person approves (recruitment assistant).
-- **Webhook security:** signature verification on the raw body before any processing (order tracking).
-- **Grounded AI:** retrieval-first prompts, "Not specified" for missing data, anti-fabrication instructions (RAG, HSE, multi-agent).
-- **Structured output:** JSON schemas and strict output formats so downstream nodes stay predictable.
-- **Agent design:** tool-calling agents, supervisor and sub-agent separation of duties, bounded iterations.
-- **Resilience:** retries, fallback models, heartbeat emails and error-alert paths.
-- **Data hygiene:** sanitising inputs, escaping HTML, treating user content as untrusted in prompts.
-
-## Technology Stack
-
-n8n · Google Gemini · OpenRouter · Supabase (vector store) · Telegram Bot API · Gmail · Google Sheets · Google Drive · Google Calendar · Google Apps Script · Microsoft Outlook · Airtable · SerpApi · WooCommerce webhooks · JavaScript
-
-## Repository Structure
+## 8. Project Structure
 
 ```text
-.
+invoice-processing-system/
 ├── README.md
-├── LICENSE
-├── tests/                              # offline logic tests + manual test plan
-├── hse-incident-weekly-analysis/       # team project
-├── order-tracking-workflow/
-├── automated-HR-recruitment-assistant/
-├── students-booking-system/
-├── alexa-assistant-v2/
-├── supabase-rag-ai-agent/
-└── multi-agent-patterns/
-    └── multi-agent-system/
+├── workflow.json
+├── PORTFOLIO-ENTRY.md
+├── assets/
+│   └── n8n-workflow-canvas.png
+├── samples/
+│   ├── demo-invoice.png
+│   ├── example-extraction.json
+│   └── ledger-headers.csv
+└── tests/
+    └── run-code-node-tests.js
 ```
 
-Each project folder contains `README.md`, `workflow.json` and an `assets/` folder with screenshots.
+## 9. Installation & Configuration
 
-## Testing
+1. Import `workflow.json` into an n8n instance with the Google Gemini, Gmail and Google Sheets integrations available. The export is inactive and contains no credential assignments.
+2. Create and attach credentials:
 
-Offline logic tests of the Code nodes and workflow wiring (`node tests/run-code-node-tests.js`) and a manual end-to-end test plan are in [`tests/`](tests/). The offline tests use synthetic data and are not n8n executions; see [TEST_REPORT](tests/TEST_REPORT.md).
+   | Node | Credential |
+   | --- | --- |
+   | Receive file (Webhook) | HTTP Header Auth (e.g. `X-Webhook-Secret` with your own random value) |
+   | OCR (OCR.space) | HTTP Header Auth (`apikey` with your OCR.space API key) |
+   | Google Gemini Chat Model | Google Gemini API credential |
+   | Send message and wait for response | Gmail OAuth2 |
+   | All / Approved / Rejected Ledgers | Google Sheets OAuth2 |
 
-## Setup and Usage
+3. Confirm that the configured Gemini model (`models/gemini-3.1-flash-lite`) is available to your credential; select a compatible model if needed.
+4. Create a Google spreadsheet with tabs `All`, `Approved`, `Rejected`. Copy the 20 headers from `samples/ledger-headers.csv` into row 1 of every tab. Replace `YOUR_SPREADSHEET_ID` in all three Google Sheets nodes, select the matching tabs and verify the column mapping.
+5. Replace `reviewer@example.com` in the Gmail node with a reviewer address you control. Ensure the review form's resume URL is reachable by the reviewer (configure your n8n public HTTPS URL if self-hosted).
+6. In n8n, start a test webhook listener. Send a multipart request using your test URL and secret:
 
-1. Open a project folder and read its README (overview, architecture, limitations).
-2. In n8n, choose **Import from File** and select the project's `workflow.json` (for multi-agent patterns, `multi-agent-system/workflow.json`).
-3. Create the credentials named in the project README. **No secrets are included in this repository.**
-4. Replace placeholder values (`YOUR_...`, `REPLACE_WITH_YOUR_CREDENTIAL`, `example.com` addresses) with your own.
-5. Run a manual or test execution before activating.
+   ```bash
+   curl -X POST 'https://YOUR_N8N_HOST/webhook-test/invoice-intake' \
+     -H 'X-Webhook-Secret: YOUR_SECRET' \
+     -F 'file=@samples/demo-invoice.png;type=image/png'
+   ```
 
-These workflows are exported examples, not packaged products. Each README lists known limitations and the project's status; review them before any real use.
+   For a PDF use `file=@invoice.pdf;type=application/pdf`. On Windows PowerShell use `curl.exe` if needed. The webhook normally acknowledges workflow start, not final approval. Keep the test execution available until the review completes.
+7. Approve or reject via the Gmail form and verify `All` plus the appropriate status sheet. Test the automatic path and rejected path separately before publishing.
 
-## Contact
+## 10. Screenshots & Demonstrations
 
+The canvas above is a cropped frame from the recorded execution, before the public-export routing correction. It shows the scanned-PDF OCR path and review flow. The original recording demonstrated a test invoice with printed subtotal USD 500, tax USD 38 and total USD 538, dated 2017, with a handwritten annotation. The printed total was extracted and the record was sent for human review. Handwriting extraction accuracy is not established.
 
-- LinkedIn: [linkedin.com/in/omar-ayman-2a2182390](https://www.linkedin.com/in/omar-ayman-2a2182390)
-- GitHub: [github.com/Omar-Ayman0](https://github.com/Omar-Ayman0)
-- Email: [omarayman.mail@gmail.com](mailto:omarayman.mail@gmail.com)
+The public demo uses a newly generated synthetic image with the same arithmetic, rather than redistributing the original invoice or raw recording (which exposed a test webhook credential).
 
-## License
+![Synthetic invoice for testing](samples/demo-invoice.png)
 
-Released under the [MIT License](LICENSE).
+`example-extraction.json` is an illustrative structured response, not a captured model result. The 2017 date should trigger `stale_date` under the current policy even when the amounts reconcile.
+
+### Manual test plan
+
+| Scenario | Expected behavior |
+| --- | --- |
+| Digital PDF with sufficient text | Text-layer path; no OCR call |
+| Image or low-text scanned PDF | OCR path |
+| Missing field / total mismatch / old invoice | Flag and reviewer form |
+| Current clean invoice with no flags | Auto-approved; All + Approved |
+| Reviewer approves flagged invoice | All + Approved; reviewer decision retained |
+| Reviewer rejects flagged invoice | All + Rejected; reviewer comment retained |
+| Unknown review status | All only; no Approved/Rejected classification |
+| Unsupported MIME type | Stops at unsupported branch |
+
+Run the offline logic checks with `node tests/run-code-node-tests.js`. These checks exercise the exported JavaScript and routing configuration with fixtures, not live n8n, OCR, Gemini, Gmail or Sheets.
+
+## 11. Limitations & Future Improvements
+
+- **Review completeness:** the email contains basic extracted fields, but not the original invoice or validation reasons. Include both and authenticate reviewer identity before using the workflow in a real finance process.
+- **Pending records:** ledger writes occur after the human response, not when review starts. Persist pending requests first and update by stable ID after review.
+- **Duplicates:** workflow static data is a demo mechanism and may not persist during manual tests; it is not concurrency-safe. Use a database uniqueness constraint and define when a record becomes committed.
+- **Extraction:** the OCR is configured for English. Digit normalization does not establish Arabic OCR support. Average text length can miss mixed scanned/digital pages. Test layouts and handwriting explicitly.
+- **Validation:** literal substring grounding is weak; it can accept unrelated matches or reject localized numbers. Currency-aware limits, strict dates, line-level quantity × unit-price checks, discounts and rounding policies are future work.
+- **Failure handling:** OCR HTTP failures, parser exceptions, API timeouts and sheet errors lack a dedicated retry/error workflow. Unsupported types stop without a custom error response. No explicit review timeout/escalation is configured.
+- **Security and privacy:** add file-size/signature validation, access control, rate limits, and data retention controls. OCR.space and Gemini receive document content; check applicable data-handling requirements. Treat extracted text as untrusted and guard spreadsheet formulas and review-email HTML.
+- **Storage:** Sheets appends are not transactional; the All and classification writes can diverge on failure. Add durable storage, idempotency and reconciliation for production.
+
+## 12. Project Status
+
+Prototype exported and demonstrated with a scanned test invoice and human approval. Public workflow sanitized and corrected so `auto_approved` and `approved_by_human` both route to Approved, while only `rejected_by_human` routes to Rejected. Unknown states take a separate no-op branch. The public version has offline logic checks; a live end-to-end run of this exact corrected export has not been performed here. No production deployment, measured accuracy or time savings are claimed.
