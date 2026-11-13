@@ -1,1 +1,0 @@
-request_id,filename,extraction_method,supplier_name,invoice_number,invoice_date,due_date,currency,subtotal,tax,total,line_items_json,ai_confidence,flags,flag_count,needs_review,status,processed_at,reviewer_decision,reviewer_comment
