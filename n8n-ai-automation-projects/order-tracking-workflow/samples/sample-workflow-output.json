@@ -1,0 +1,86 @@
+{
+  "_demo_notice": "SYNTHETIC DEMONSTRATION DATA. Illustrative run; the tracker URL and Apps Script response are assumed examples, not output of a real deployment.",
+  "scenario": "Successful run: valid signature, topic order.processing, sheet update ok",
+  "steps": [
+    {
+      "node": "Order Webhook",
+      "result": "POST /order-update received, raw body kept"
+    },
+    {
+      "node": "Is Order Processing?",
+      "result": "true (x-wc-webhook-topic = order.processing)"
+    },
+    {
+      "node": "Calculate HMAC Signature",
+      "result": "base64 HMAC of raw body computed"
+    },
+    {
+      "node": "Signature Valid?",
+      "result": "true (matches x-wc-webhook-signature)"
+    },
+    {
+      "node": "Extract Order Fields",
+      "output": {
+        "order_id": 10482,
+        "customer_email": "sample.customer@example.com",
+        "sig": "FpC5gDl573xf7//azXtuEeEHHtDXTBPdKHNzev62kmo=",
+        "customer_name": "Sample Customer",
+        "order_status": "processing"
+      }
+    },
+    {
+      "node": "Sanitize Data",
+      "output": {
+        "order_id": "10482",
+        "customer_name": "Sample Customer",
+        "status_step": 1,
+        "customer_email": "sample.customer@example.com",
+        "secret": ""
+      }
+    },
+    {
+      "node": "Update Tracking Sheet",
+      "output": {
+        "headers": {
+          "content-type": "application/json"
+        },
+        "statusCode": 200,
+        "statusMessage": "OK",
+        "body": {
+          "ok": true,
+          "tracker_url": "https://tracking.example.com/track?order=10482&token=DEMO-TOKEN"
+        }
+      }
+    },
+    {
+      "node": "Update Successful?",
+      "result": "true (ok: true)"
+    },
+    {
+      "node": "Build Customer Email",
+      "output": {
+        "to": "sample.customer@example.com",
+        "subject": "Order Update - Tracking Link For Order  10482"
+      }
+    },
+    {
+      "node": "Send Tracking Email",
+      "result": "Gmail sends the email"
+    },
+    {
+      "node": "Respond: Success",
+      "httpStatus": 200,
+      "responseBody": {
+        "headers": {
+          "content-type": "application/json"
+        },
+        "statusCode": 200,
+        "statusMessage": "OK",
+        "body": {
+          "ok": true,
+          "tracker_url": "https://tracking.example.com/track?order=10482&token=DEMO-TOKEN"
+        }
+      }
+    }
+  ]
+}

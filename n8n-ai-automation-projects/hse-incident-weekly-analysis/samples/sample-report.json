@@ -1,0 +1,23 @@
+{
+  "_demo_notice": "SYNTHETIC DEMONSTRATION DATA. Fictional sites, events and counts. Not real operational results.",
+  "period": "2026-10-26 to 2026-11-02",
+  "total_incidents": 5,
+  "incidents": [
+    {"date": "2026-10-26", "type": "Near miss", "severity": "Medium", "location": "Demo Warehouse - Bay 2", "injuries": "None", "root_cause": "Forklift reversed in a narrow aisle without a spotter", "corrective_actions": "Spotter rule reinforced; floor markings requested", "status": "Open"},
+    {"date": "2026-10-27", "type": "Slip/trip", "severity": "Low", "location": "Demo Loading Dock", "injuries": "None", "root_cause": "Wet floor after rain with no warning sign", "corrective_actions": "Warning signs added; drainage check scheduled", "status": "Closed"},
+    {"date": "2026-10-28", "type": "Equipment failure", "severity": "High", "location": "Demo Workshop", "injuries": "Minor hand injury (first aid)", "root_cause": "Guard missing on bench grinder after maintenance", "corrective_actions": "Grinder tagged out; guard replaced; similar tools to be inspected", "status": "In progress"},
+    {"date": "2026-10-30", "type": "Chemical spill", "severity": "Medium", "location": "Demo Storage Room", "injuries": "None", "root_cause": "Container not secured on shelf", "corrective_actions": "Spill contained; shelf restraints ordered", "status": "In progress"},
+    {"date": "2026-11-01", "type": "Near miss", "severity": "Low", "location": "Demo Warehouse - Bay 2", "injuries": "None", "root_cause": "Pallet stacked above recommended height", "corrective_actions": "Pallet re-stacked; reminder issued", "status": "Closed"}
+  ],
+  "by_severity": {"High": 1, "Medium": 2, "Low": 2},
+  "by_type": {"Near miss": 2, "Slip/trip": 1, "Equipment failure": 1, "Chemical spill": 1},
+  "by_location": {"Demo Warehouse - Bay 2": 2, "Demo Loading Dock": 1, "Demo Workshop": 1, "Demo Storage Room": 1},
+  "trends_and_patterns": "Two near misses were reported in Demo Warehouse - Bay 2 within one week, both linked to material-handling practices. Two of the five incidents are still in progress.",
+  "risk_alerts": ["High severity: equipment failure in Demo Workshop on 2026-10-28. A guard was missing after maintenance and a minor hand injury occurred."],
+  "recommendations": [
+    "Complete the inspection of tools serviced in the same maintenance window as the bench grinder.",
+    "Add a post-maintenance guard check to the maintenance sign-off.",
+    "Review forklift reversing rules and aisle markings in Bay 2.",
+    "Confirm closure dates for the two in-progress incidents at the next safety meeting."
+  ]
+}

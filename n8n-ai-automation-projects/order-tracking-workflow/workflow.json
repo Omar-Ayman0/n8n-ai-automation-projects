@@ -1,0 +1,742 @@
+{
+  "name": "Order Tracking Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🛒 Order Tracking Workflow\n**WooCommerce → Tracking Link Email for the Customer**\n\nReceives a WooCommerce webhook when an order moves to *processing*, verifies its HMAC signature, registers the order in the tracking sheet (Google Apps Script) and emails the customer a personal tracking link.\n\n**Flow:** Webhook → Topic filter → Signature check → Prepare data → Update tracking sheet → Email customer → Respond 200\n**On failure:** log the event → respond 401\n\n**Endpoint:** `POST /webhook/order-update`\n\n### Setup checklist\n1. Select the **Crypto** credential (WooCommerce webhook secret)\n2. Connect the **Gmail OAuth2** credential\n3. Set the **Apps Script URL** and shared secret in both HTTP Request nodes\n4. Create the WooCommerce webhook pointing to the *Production* URL\n5. Run a test, then **Publish** the workflow",
+        "height": 480,
+        "width": 1020,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -540
+      ],
+      "id": "2cc97bc8-a2cf-45b1-ab2e-0689e3ea1e6a",
+      "name": "Sticky - Overview"
+    },
+    {
+      "parameters": {
+        "content": "### 1. Webhook & Topic Filter\nReceives the WooCommerce POST on `/order-update` (raw body is kept for the signature check).\n\n- **Is Order Processing?** continues only when header `x-wc-webhook-topic` = `order.processing`\n- Any other topic is acknowledged right away and ignored",
+        "height": 650,
+        "width": 540,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b2d16e11-45ca-444d-9a06-14140eb53edc",
+      "name": "Sticky - 1 Trigger"
+    },
+    {
+      "parameters": {
+        "content": "### 2. Signature Verification\nBlocks forged or tampered requests.\n\n- **Calculate HMAC Signature** hashes the raw body (base64)\n- **Signature Valid?** compares it with header `x-wc-webhook-signature`\n- Mismatch → *Failure Handling* (section 6)",
+        "height": 470,
+        "width": 540,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        600,
+        0
+      ],
+      "id": "361d94d3-b463-4abb-8a52-eecce32c6c2d",
+      "name": "Sticky - 2 Signature"
+    },
+    {
+      "parameters": {
+        "content": "### 3. Prepare Data\nBuilds a clean, safe payload for the sheet.\n\n- **Extract Order Fields:** order ID, customer name & email, status\n- **Sanitize Data:** removes line breaks, trims spaces, defaults `status_step` to 1",
+        "height": 470,
+        "width": 540,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "f3735bb3-8440-4c28-a4ac-720fb15c410e",
+      "name": "Sticky - 3 Prepare"
+    },
+    {
+      "parameters": {
+        "content": "### 4. Update Tracking Sheet\nSends the order to the Google Apps Script web app (JSON + shared secret).\n\n- Errors never stop the run, the response is always inspected\n- **Update Successful?** checks the `ok` flag or HTTP 2xx\n- ✅ true → email the customer  ·  ❌ false → Failure Handling",
+        "height": 470,
+        "width": 540,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        0
+      ],
+      "id": "87c2f47d-4f83-4488-996a-7a331dd3013d",
+      "name": "Sticky - 4 Tracking Sheet"
+    },
+    {
+      "parameters": {
+        "content": "### 5. Notify Customer\n- **Build Customer Email:** subject + HTML body with the `tracker_url` returned by Apps Script\n- **Send Tracking Email:** sent through Gmail\n- **Respond: Success:** returns HTTP 200 to WooCommerce with the Apps Script response",
+        "height": 470,
+        "width": 840,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        0
+      ],
+      "id": "93a3e319-cea7-4158-8cad-4a147a715b68",
+      "name": "Sticky - 5 Success"
+    },
+    {
+      "parameters": {
+        "content": "### 6. Failure Handling\nReached when the signature is invalid or the sheet update fails.\n\n- **Build Failure Log:** event, order ID, reason, timestamp\n- **Log Failure:** reports the event to Apps Script\n- **Respond: Unauthorized:** returns HTTP 401 `{ ok: false, error }`",
+        "height": 470,
+        "width": 840,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        720
+      ],
+      "id": "ec5cb06c-cf3b-4f59-bf59-1d30ed4b05f3",
+      "name": "Sticky - 6 Failure"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-update",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        60,
+        290
+      ],
+      "id": "24948fe3-6f37-4331-a331-257d98491915",
+      "name": "Order Webhook",
+      "notes": "POST /order-update",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bef8519e-4e62-4ec0-b334-58de63f26de9",
+              "leftValue": "={{ $json.headers['x-wc-webhook-topic'] }}",
+              "rightValue": "order.processing",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        300,
+        290
+      ],
+      "id": "ed875c1c-9249-407c-87b4-ff2c5888e61b",
+      "name": "Is Order Processing?",
+      "notes": "topic = order.processing",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "action": "hmac",
+        "binaryData": true,
+        "dataPropertyName": "calculated_data",
+        "encoding": "base64"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        660,
+        290
+      ],
+      "id": "8c91da59-a97d-4a4d-b73e-3e19ce93e577",
+      "name": "Calculate HMAC Signature",
+      "credentials": {
+        "crypto": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Crypto account"
+        }
+      },
+      "notes": "HMAC of raw body",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        300,
+        480
+      ],
+      "id": "0d7c8a79-b80e-44c4-8654-2ac550d20195",
+      "name": "Respond: Ignored",
+      "notes": "acknowledge & skip",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "163cc098-de93-48b7-9609-60662ee4afc0",
+              "leftValue": "={{ $json.headers['x-wc-webhook-signature'] }}",
+              "rightValue": "={{ $json.calculated_data }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        900,
+        290
+      ],
+      "id": "56e4356d-ac0b-4923-a6b4-7726bcf7dfc1",
+      "name": "Signature Valid?",
+      "notes": "header = calculated",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7cf6a3cc-dbde-424c-85f0-cf6adf794607",
+              "name": "order_id",
+              "value": "={{ $json.body.id }}",
+              "type": "number"
+            },
+            {
+              "id": "9177df95-5413-424a-9b67-0046876dcd33",
+              "name": "customer_email",
+              "value": "={{ $json.body.customer.email }}",
+              "type": "string"
+            },
+            {
+              "id": "7ebdf286-79ac-472e-bfe1-c14aeb8f595b",
+              "name": "sig",
+              "value": "={{ $json.headers['x-wc-webhook-signature'] }}",
+              "type": "string"
+            },
+            {
+              "id": "668b0440-3b59-4168-a40c-d97a656f0845",
+              "name": "customer_name",
+              "value": "={{ $json.body.customer.name }}",
+              "type": "string"
+            },
+            {
+              "id": "503a5b24-ad61-4fa6-bed1-7c98ad91bc31",
+              "name": "event_topic",
+              "value": "={{ $json.calculated_data }}",
+              "type": "string"
+            },
+            {
+              "id": "319af6f5-4e6f-485e-bf21-8ed322e0f5e4",
+              "name": "order_status",
+              "value": "={{ $json.body.status }}",
+              "type": "string"
+            },
+            {
+              "id": "25e3fc13-f5ac-4d7c-a94a-66e9fa6a91c9",
+              "name": "secret",
+              "value": "={{ $json.headers['postman-token'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1260,
+        290
+      ],
+      "id": "dc2161f8-a646-46da-9923-451a3867ff4c",
+      "name": "Extract Order Fields",
+      "notes": "id, name, email, status",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $json || {};\nfunction cleanStr(v, space = '') {\n  let s = v == null ? '' : String(v);\n  s = s.replace(/[\\r\\n]+/g, space);\n  if (space === ' ') s = s.replace(/\\s{2,}/g, ' ');\n  return s.trim();\n}\n \nconst out = {\n  order_id: cleanStr(src.order_id || src.body?.order_id || src.id || src.order?.id || src.body?.order?.id),\n  customer_name: cleanStr(\n    src.customer_name || src.body?.customer_name ||\n    (((src.billing?.first_name || src.body?.billing?.first_name || '') + ' ' +\n      (src.billing?.last_name  || src.body?.billing?.last_name  || '')).trim()),\n    ' '\n  ),\n  status_step: Number(cleanStr(src.status_step || src.body?.status_step || 1)),\n  customer_email: cleanStr(src.customer_email || src.body?.customer_email || src.billing?.email || src.body?.billing?.email),\n  secret: cleanStr(src.secret || src.body?.secret || '')\n};\n \nif (!Number.isFinite(out.status_step)) out.status_step = 1;\nreturn [{ json: out }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        290
+      ],
+      "id": "9e534714-1caa-4469-8a9b-9a1ddccd3af7",
+      "name": "Sanitize Data",
+      "notes": "clean payload",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n\n  \"secret\": \"YOUR_SHARED_SECRET\",\n\n  \"order_id\": \"{{ $json.order_id }}\",\n\n  \"customer_name\": \"{{ $json.customer_name }}\",\n\n  \"customer_email\": \"{{ $json.customer_email }}\",\n\n  \"status_step\": \"{{ $json.status_step }}\"\n\n}\n ",
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 302
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1860,
+        290
+      ],
+      "id": "95129e38-b059-445b-b677-d8d94bbb2a7e",
+      "name": "Update Tracking Sheet",
+      "notes": "Apps Script POST",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6013a08e-1833-4aa9-957e-3828cb20ff03",
+              "leftValue": "={{ Boolean($json.ok ?? $json.body?.ok ?? ($json.statusCode >= 200 && $json.statusCode < 300)) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2100,
+        290
+      ],
+      "id": "2c207ab7-131f-427a-b365-ad1c66180059",
+      "name": "Update Successful?",
+      "notes": "ok / HTTP 2xx",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        290
+      ],
+      "id": "d7ffc9e3-648f-48fc-ab60-9b42c99cd08b",
+      "name": "Send Tracking Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL",
+          "name": "Gmail account 3"
+        }
+      },
+      "notes": "send: message",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($node[\"Update Tracking Sheet\"].json || { ok: true }) }}\n ",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2940,
+        290
+      ],
+      "id": "41ae229e-e8bf-41d4-a694-9f6ea81a1f65",
+      "name": "Respond: Success",
+      "notes": "HTTP 200",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e042e220-9974-45fb-af2a-de0980e62472",
+              "name": "event",
+              "value": "faild_update",
+              "type": "string"
+            },
+            {
+              "id": "17b42700-85d2-4f32-a98a-098944050db4",
+              "name": "order_id",
+              "value": "={{ $('Sanitize Data').item.json.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "27ba6861-5178-419c-aa71-c5608c1dfb7a",
+              "name": "reason",
+              "value": "={{$node[\"Update Tracking Sheet\"].json.error || $node[\"Update Tracking Sheet\"].json.body?.error || \"unknown\"}}",
+              "type": "string"
+            },
+            {
+              "id": "aa835820-0c84-425d-8f40-cc732144ab4c",
+              "name": "ts",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1560,
+        1010
+      ],
+      "id": "3f957134-f103-4ee8-896d-5a11eda85c4c",
+      "name": "Build Failure Log",
+      "notes": "event, reason, ts",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a374fb0a-21f1-4824-9fd1-f18597327f4b",
+              "name": "to",
+              "value": "={{ $('Extract Order Fields').item.json.customer_email }}",
+              "type": "string"
+            },
+            {
+              "id": "dcd6821b-c5b2-49c4-b26d-5482fa093041",
+              "name": "subject",
+              "value": "=Order Update - Tracking Link For Order  {{ $('Sanitize Data').item.json.order_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5796932b-0a7e-4306-9748-2dd1dc289272",
+              "name": "html",
+              "value": "=<div style=\"font-family:Arial,sans-serif;\">\n<h2>Order Tracking</h2>\n<p>Hello {{$node[\"Sanitize Data\"].json.customer_name}},</p>\n<p>Your order <strong>#{{$node[\"Sanitize Data\"].json.order_id}}</strong> is being processed.</p>\n<p><a href=\"{{$node[\"Update Tracking Sheet\"].json.body.tracker_url}}\">Click here to track your order</a></p>\n</div>",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        2460,
+        290
+      ],
+      "id": "c5db49cb-9546-44f7-ad09-48bd5b1cf424",
+      "name": "Build Customer Email",
+      "notes": "subject + HTML",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/YOUR_APPS_SCRIPT_DEPLOYMENT_ID/exec",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event",
+              "value": "={{$node[\"Build Failure Log\"].json.event}}"
+            },
+            {
+              "name": "secter",
+              "value": "YOUR_SHARED_SECRET"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 302
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1800,
+        1010
+      ],
+      "id": "6a0286f9-cc70-45ed-b870-395c87956024",
+      "name": "Log Failure",
+      "notes": "Apps Script POST",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"ok\": false, \"error\": \"unauthorized or upstream error\"}\n ",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2040,
+        1010
+      ],
+      "id": "9ebedc98-3f51-4786-a1f2-4728cc6ae17b",
+      "name": "Respond: Unauthorized",
+      "notes": "HTTP 401",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Order Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Order Processing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Order Processing?": {
+      "main": [
+        [
+          {
+            "node": "Calculate HMAC Signature",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Ignored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate HMAC Signature": {
+      "main": [
+        [
+          {
+            "node": "Signature Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Signature Valid?": {
+      "main": [
+        [
+          {
+            "node": "Extract Order Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Failure Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Order Fields": {
+      "main": [
+        [
+          {
+            "node": "Sanitize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize Data": {
+      "main": [
+        [
+          {
+            "node": "Update Tracking Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Tracking Sheet": {
+      "main": [
+        [
+          {
+            "node": "Update Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Successful?": {
+      "main": [
+        [
+          {
+            "node": "Build Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Failure Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Tracking Email": {
+      "main": [
+        [
+          {
+            "node": "Respond: Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Customer Email": {
+      "main": [
+        [
+          {
+            "node": "Send Tracking Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Log": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond: Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Africa/Cairo",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "tags": []
+}

@@ -1,0 +1,20 @@
+{
+  "_demo_notice": "SYNTHETIC DEMONSTRATION DATA. Fictional customer and order. Demo secret is not real.",
+  "method": "POST",
+  "path": "/webhook/order-update",
+  "headers": {
+    "x-wc-webhook-topic": "order.processing",
+    "x-wc-webhook-signature": "FpC5gDl573xf7//azXtuEeEHHtDXTBPdKHNzev62kmo=",
+    "content-type": "application/json"
+  },
+  "raw_body": "{\"id\":10482,\"status\":\"processing\",\"customer\":{\"name\":\"Sample Customer\",\"email\":\"sample.customer@example.com\"}}",
+  "body": {
+    "id": 10482,
+    "status": "processing",
+    "customer": {
+      "name": "Sample Customer",
+      "email": "sample.customer@example.com"
+    }
+  },
+  "demo_signature_note": "Signature = base64(HMAC-SHA256(raw_body, 'DEMO_SECRET_NOT_REAL')), computed for this demo."
+}
