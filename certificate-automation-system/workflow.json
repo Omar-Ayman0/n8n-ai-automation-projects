@@ -1,0 +1,2019 @@
+{
+  "name": "Certificate Automation — Hybrid v2 (Event + Catch-up + Backfill + Reporting)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# CERTIFICATE AUTOMATION — HYBRID v2\n**Event → PDF → Email | Nightly Catch-up | Manual Backfill | Weekly XLSX**\n\n**Before activation:** connect Google Sheets, Drive, Docs, Gmail credentials and verify document/template/folder IDs. Keep synthetic data for demonstrations.\n\n**Sheet columns:** `cert_id | name | email | course | score | status | created_at | issued_at | error | template_version | regenerated_at`\n\n**Status:** `rejected`, `pending`, `sending`, `issued`, `delivery_unknown`. Other legacy `failed` rows may be retried by catch-up.\n\n**Important:** Google Sheets duplicate check is not transactional. Do not claim exactly-once delivery.",
+        "height": 390,
+        "width": 760,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -350
+      ],
+      "id": "b0646257-a1f8-4409-a7dd-92d9f119ec76",
+      "name": "Setup Notes"
+    },
+    {
+      "parameters": {
+        "content": "## 01 — EVENT-DRIVEN ISSUANCE\nForm → Validate → Dedup → Pending → Shared PDF generator",
+        "height": 110,
+        "width": 800,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        40
+      ],
+      "id": "ee1a2067-2099-4a34-a30f-2f23a4ddf2bc",
+      "name": "Lane 1 Label"
+    },
+    {
+      "parameters": {
+        "content": "## 02 — NIGHTLY CATCH-UP · 23:00\nRetry old `pending` / `failed` records (max 20). **Never auto-retry `delivery_unknown`.**",
+        "height": 110,
+        "width": 800,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        780
+      ],
+      "id": "71af4450-6fd9-4dbb-adfb-a8946ce7be64",
+      "name": "Lane 2 Label"
+    },
+    {
+      "parameters": {
+        "content": "## 03 — MANUAL BACKFILL\nRegenerate older issued documents using the current template; **do not email**.",
+        "height": 110,
+        "width": 800,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        1180
+      ],
+      "id": "42e94e04-6ee3-43aa-85cd-87d5eb452e95",
+      "name": "Lane 3 Label"
+    },
+    {
+      "parameters": {
+        "content": "## 04 — WEEKLY REPORT · SUNDAY 09:00\nRead issued records → XLSX → manager email (ISO dates).",
+        "height": 110,
+        "width": 800,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        1580
+      ],
+      "id": "8707bd4c-f0ff-4525-9aa7-a0797db3e6f4",
+      "name": "Lane 4 Label"
+    },
+    {
+      "parameters": {
+        "content": "## 05 — SHARED CERTIFICATE PIPELINE\nSet data → Copy Google Doc → Replace placeholders → Export PDF → Archive + Delivery routing",
+        "height": 125,
+        "width": 960,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        520
+      ],
+      "id": "1f6efd34-fb6e-4a92-bac2-4c5e4b350345",
+      "name": "Shared Label"
+    },
+    {
+      "parameters": {
+        "path": "certificate-demo-2116b9ee-86a4-592a-bd46-61f20c06bb1d",
+        "formTitle": "إتمام دورة - إصدار شهادة",
+        "formDescription": "يملؤه المدرب عند نجاح المتدرب",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Course",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "AI Automation"
+                  },
+                  {
+                    "option": "Data Analysis"
+                  },
+                  {
+                    "option": "Digital Marketing"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Score",
+              "fieldType": "number",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        260
+      ],
+      "id": "3bf39961-99ba-4ae6-9103-2c7ab60e651f",
+      "name": "Course Completion Form"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $input.first().json;\nconst name = String(f['Full Name'] || '').trim();\nconst email = String(f['Email'] || '').trim().toLowerCase();\nconst course = String(f['Course'] || '').trim();\nconst score = Number(f['Score']);\nconst slug = s => s.toLowerCase().replace(/[^a-z0-9\\u0600-\\u06FF]+/g, '-').replace(/^-|-$/g, '');\nlet error = '';\nif (!name) error = 'Missing name';\nelse if (!/^\\S+@\\S+\\.\\S+$/.test(email)) error = 'Invalid email';\nelse if (isNaN(score) || score < 60 || score > 100) error = 'Score must be between 60 and 100';\nreturn [{ json: { cert_id: slug(email) + '_' + slug(course), name, email, course, score,\n  valid: error === '', error, mode: 'issue' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        270,
+        260
+      ],
+      "id": "0e34f897-b43e-4717-9f34-7a4a510bb5cb",
+      "name": "Prepare Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "1cbfc60e-2978-49ad-9a32-0b4d2fd2ff95",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        540,
+        260
+      ],
+      "id": "186ab8e9-e01d-4316-96d5-ccc2a2d04921",
+      "name": "Valid Request?"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Certificates",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cert_id": "={{ 'rejected_' + ($json.cert_id || 'invalid') + '_' + $now.toMillis() }}",
+            "name": "={{ $json.name }}",
+            "email": "={{ $json.email }}",
+            "course": "={{ $json.course }}",
+            "score": "={{ $json.score }}",
+            "status": "rejected",
+            "error": "={{ $json.error }}",
+            "created_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        820,
+        150
+      ],
+      "id": "056fc33f-6aa8-4656-852f-bf2c55a46c29",
+      "name": "Log Rejected"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "cert_id",
+              "lookupValue": "={{ $json.cert_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        820,
+        340
+      ],
+      "id": "0c5da60f-a9ed-459a-bd6d-384da4ca9d87",
+      "name": "Check Duplicate",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e1319d75-fb56-44ec-8124-b208d1f8b5aa",
+              "leftValue": "={{ ['issued','regenerated','pending','sending','delivery_unknown'].includes(String($json.status ?? '').trim().toLowerCase()) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        340
+      ],
+      "id": "f1ffdbdd-f797-48c9-850d-3e37caf8c1ac",
+      "name": "Already Handled?"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        220
+      ],
+      "id": "e2342778-8bcf-4cb2-9494-3dfa0175b227",
+      "name": "Skip Duplicate"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $('Prepare Request').item.json.name }}",
+            "email": "={{ $('Prepare Request').item.json.email }}",
+            "course": "={{ $('Prepare Request').item.json.course }}",
+            "status": "pending",
+            "created_at": "={{ $now.toISO() }}",
+            "issued_at": "",
+            "error": "",
+            "template_version": "",
+            "regenerated_at": "",
+            "score": "={{ $('Prepare Request').item.json.score }}",
+            "cert_id": "={{ $('Prepare Request').item.json.cert_id }}"
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1380,
+        410
+      ],
+      "id": "7f978c40-f3be-434a-a9a2-b8f9adedf084",
+      "name": "Log Pending"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Prepare Request').first().json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        410
+      ],
+      "id": "59f393ae-5ade-4118-b097-9ddfbba740b7",
+      "name": "Restore Data"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        980
+      ],
+      "id": "9fc7943b-ed6e-42b1-a06c-31f6492165e5",
+      "name": "Schedule Nightly 23:00"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        270,
+        980
+      ],
+      "id": "36d2575e-eddc-41ed-bfcc-2d45d3c0f5ee",
+      "name": "Read Sheet - Nightly",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = Date.now();\nconst MAX_BATCH = 20;\nreturn $input.all().map(i => i.json)\n  .filter(r => {\n    const state = String(r.status ?? '').trim().toLowerCase();\n    const created = Date.parse(String(r.created_at ?? ''));\n    return r.cert_id && ['pending', 'failed'].includes(state) &&\n      (!Number.isFinite(created) || (now - created) / 60000 > 15);\n  })\n  .slice(0, MAX_BATCH)\n  .map(r => ({ json: { cert_id: r.cert_id, name: r.name, email: r.email,\n    course: r.course, score: r.score, mode: 'issue' } }));\n// 'sending' and 'delivery_unknown' are intentionally excluded; review them manually.\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        980
+      ],
+      "id": "71fb23cc-4d7d-4572-9db6-022a8930b993",
+      "name": "Find Pending"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        1370
+      ],
+      "id": "3a8634f3-8fd6-4b25-bb27-257fde3fdf6c",
+      "name": "Manual Backfill Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        270,
+        1370
+      ],
+      "id": "30f9d15c-e801-4e3f-93b9-68cec7ee2f7a",
+      "name": "Read Sheet - Backfill",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const TEMPLATE_VERSION = 'v2';\nconst COURSE = ''; // Optional course filter\nreturn $input.all().map(i => i.json)\n  .filter(r => r.cert_id && String(r.status ?? '').trim().toLowerCase() === 'issued' &&\n    String(r.template_version ?? '').trim() !== TEMPLATE_VERSION &&\n    (!COURSE || r.course === COURSE))\n  .slice(0, 20)\n  .map(r => ({ json: { cert_id: r.cert_id, name: r.name, email: r.email,\n    course: r.course, score: r.score, mode: 'backfill' } }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        1370
+      ],
+      "id": "8491bc7d-929c-4bea-8526-0c56536f4bc2",
+      "name": "Select Old Certificates"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "58eac5b6-ee6e-474a-977b-4b8fb1b39292",
+              "name": "cert_id",
+              "value": "={{ $json.cert_id }}",
+              "type": "string"
+            },
+            {
+              "id": "ae8661f8-9d6f-44fb-8268-d19589ce4430",
+              "name": "name",
+              "value": "={{ $json.name }}",
+              "type": "string"
+            },
+            {
+              "id": "61cb4f6e-99fc-4824-bc1d-8a0aa976afaf",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "8f50fd71-b07a-437d-987c-759596b64320",
+              "name": "course",
+              "value": "={{ $json.course }}",
+              "type": "string"
+            },
+            {
+              "id": "ac1f3644-707e-415e-93b8-f8322ffa0670",
+              "name": "score",
+              "value": "={{ $json.score }}",
+              "type": "string"
+            },
+            {
+              "id": "2dc472c2-54e3-4ceb-b125-7ba5dab03b27",
+              "name": "mode",
+              "value": "={{ $json.mode }}",
+              "type": "string"
+            },
+            {
+              "id": "ca7828a6-f49a-4816-a226-2d10d955b22b",
+              "name": "template_version",
+              "value": "v2",
+              "type": "string"
+            },
+            {
+              "id": "3f28888e-18ab-4ad3-9103-1dbca44b39b8",
+              "name": "issue_date",
+              "value": "={{ $now.toFormat('dd/MM/yyyy') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1940,
+        750
+      ],
+      "id": "7944fec5-d66b-4591-a426-b0571b099113",
+      "name": "Set Cert Data"
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "name": "=Certificate_{{ $json.cert_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2230,
+        750
+      ],
+      "id": "4b56b7b0-4b90-4f92-8410-4960a6e3a4ed",
+      "name": "Copy Template"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "replaceAll",
+              "text": "{{name}}",
+              "replaceText": "={{ $('Set Cert Data').item.json.name }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{course}}",
+              "replaceText": "={{ $('Set Cert Data').item.json.course }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{score}}",
+              "replaceText": "={{ $('Set Cert Data').item.json.score }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{date}}",
+              "replaceText": "={{ $('Set Cert Data').item.json.issue_date }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "{{cert_id}}",
+              "replaceText": "={{ $('Set Cert Data').item.json.cert_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        2520,
+        750
+      ],
+      "id": "61e7098b-87a8-4160-89ab-f8949ea486fe",
+      "name": "Fill Template"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('Copy Template').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "docsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3360,
+        750
+      ],
+      "id": "b29e549e-6e77-4e54-8375-b214c13d41d7",
+      "name": "Export PDF"
+    },
+    {
+      "parameters": {
+        "name": "=Certificate_{{ $('Set Cert Data').item.json.cert_id }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3620,
+        590
+      ],
+      "id": "b13fddff-a3b0-4db0-9914-8b446dae9147",
+      "name": "Archive PDF in Drive"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "59f865a9-784e-4907-8888-4458554207fc",
+              "leftValue": "={{ $('Set Cert Data').item.json.mode }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "backfill"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3620,
+        750
+      ],
+      "id": "f0e69b64-e347-497a-8775-2f3f961b9312",
+      "name": "Is Backfill?"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Set Cert Data').item.json.email }}",
+        "subject": "=شهادة إتمام دورة {{ $('Set Cert Data').item.json.course }}",
+        "message": "=<p>مرحباً {{ $('Set Cert Data').item.json.name }}،</p><p>تهانينا على إتمام الدورة! شهادتك مرفقة.</p>",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "data"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3880,
+        900
+      ],
+      "id": "696d24de-32f6-4dda-aeec-84860496379d",
+      "name": "Email Certificate",
+      "retryOnFail": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "issued",
+            "cert_id": "={{ $('Set Cert Data').item.json.cert_id }}",
+            "name": "={{ $('Set Cert Data').item.json.name }}",
+            "email": "={{ $('Set Cert Data').item.json.email }}",
+            "course": "={{ $('Set Cert Data').item.json.course }}",
+            "score": "={{ $('Set Cert Data').item.json.score }}",
+            "template_version": "={{ $('Set Cert Data').item.json.template_version }}",
+            "issued_at": "={{ $now.toISO() }}",
+            "error": ""
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4160,
+        830
+      ],
+      "id": "4f51eaab-8d98-4529-ba0c-72b65d9aa7a8",
+      "name": "Mark Issued"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "issued",
+            "template_version": "v2",
+            "cert_id": "={{ $('Set Cert Data').item.json.cert_id }}",
+            "regenerated_at": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3880,
+        1160
+      ],
+      "id": "1ead50eb-b47d-4e41-9407-581544ad32e5",
+      "name": "Mark Regenerated"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 0"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1760
+      ],
+      "id": "3b39a32d-e527-4599-857b-6b05eb211c92",
+      "name": "Schedule Sunday 09:00"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        270,
+        1760
+      ],
+      "id": "9b1c0263-9ff1-4a61-8489-58675ca3b462",
+      "name": "Read Sheet - Weekly",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const since = Date.now() - 7 * 864e5;\nconst parseDate = v => {\n  const s = String(v ?? '').trim();\n  const legacy = s.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})$/);\n  if (legacy) return Date.UTC(+legacy[3], +legacy[2] - 1, +legacy[1]);\n  return Date.parse(s);\n};\nconst rows = $input.all().map(i => i.json)\n  .filter(r => String(r.status ?? '').trim().toLowerCase() === 'issued' &&\n    Number.isFinite(parseDate(r.issued_at)) && parseDate(r.issued_at) > since)\n  .map(r => ({ json: { cert_id: r.cert_id, name: r.name, email: r.email,\n    course: r.course, score: r.score, issued_at: r.issued_at } }));\nreturn rows.length ? rows : [{ json: { note: 'No certificates issued this week' } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        1760
+      ],
+      "id": "be355af6-ed1c-4ab5-974b-b899b5f3f213",
+      "name": "Weekly Rows"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "fileName": "weekly_certificates.xlsx"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        1760
+      ],
+      "id": "891c9afe-c123-4254-a3e0-e60ac5274bb4",
+      "name": "Convert to XLSX"
+    },
+    {
+      "parameters": {
+        "sendTo": "REPLACE_WITH_MANAGER_EMAIL",
+        "subject": "تقرير الشهادات الأسبوعي",
+        "message": "=<p>عدد الشهادات المُصدرة هذا الأسبوع: <b>{{ $('Weekly Rows').all().filter(i => i.json.cert_id).length }}</b></p><p>التفاصيل في الملف المرفق.</p>",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1110,
+        1760
+      ],
+      "id": "fbd21e6e-f6a0-4f39-911e-b4ea126196ac",
+      "name": "Email Manager"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "59f865a9-784e-4907-8888-4458554207fc",
+              "leftValue": "={{ $('Set Cert Data').item.json.mode }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "issue"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2780,
+        750
+      ],
+      "id": "d7a0758d-95ae-46b8-8168-17d2f3255ce1",
+      "name": "Requires Email Delivery?"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cert_id": "={{ $('Set Cert Data').item.json.cert_id }}",
+            "status": "sending",
+            "error": ""
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3060,
+        900
+      ],
+      "id": "084d6389-6b30-465a-805b-a8e67810c68d",
+      "name": "Mark Sending (Before Gmail)"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_RESOURCE_ID",
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 283045840,
+          "mode": "list",
+          "cachedResultName": "RECONNECT_RESOURCE",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "cert_id": "={{ $('Set Cert Data').item.json.cert_id }}",
+            "status": "delivery_unknown",
+            "error": "Gmail returned an error or acknowledgement was not confirmed. Verify Gmail Sent before retrying."
+          },
+          "matchingColumns": [
+            "cert_id"
+          ],
+          "schema": [
+            {
+              "id": "cert_id",
+              "displayName": "cert_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "course",
+              "displayName": "course",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "issued_at",
+              "displayName": "issued_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error",
+              "displayName": "error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "template_version",
+              "displayName": "template_version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "regenerated_at",
+              "displayName": "regenerated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4160,
+        1090
+      ],
+      "id": "a60ff7ea-e128-4cc8-97a9-81b685dacc3f",
+      "name": "Mark Delivery Unknown (Review)"
+    },
+    {
+      "parameters": {
+        "content": "## DELIVERY SAFETY\n`pending` → **`sending`** (before export/email) → PDF → **`issued`** after confirmed Gmail success.\nOn Gmail error/unknown outcome → **`delivery_unknown`**, manual verification of Gmail Sent.\nThis prevents blind automated retries when an email could already have been delivered.\n**Not exactly-once:** a crash *before* writing `sending` or a manual replay can still duplicate artifacts.\nGoogle Sheets does not provide atomic transactions.\nCheck node errors and reconnect credentials after import.",
+        "height": 300,
+        "width": 760,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3530,
+        270
+      ],
+      "id": "d3760e2b-4ee0-4a16-ae66-43142d231cba",
+      "name": "Delivery Safety / Status"
+    },
+    {
+      "parameters": {
+        "content": "## BACKFILL GUARDBAND\nOnly records with `status=issued` and old `template_version` are selected.\nTemplate regenerated PDFs are archived, no student email, `status` remains `issued` and `regenerated_at` is updated.\nDrive files can duplicate on repeated runs; consider file-ID tracking in a later version.",
+        "height": 300,
+        "width": 760,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        850,
+        1350
+      ],
+      "id": "3eb1d7a6-c795-4be2-b267-fc61063b1e48",
+      "name": "Backfill Notes"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Course Completion Form": {
+      "main": [
+        [
+          {
+            "node": "Prepare Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Request": {
+      "main": [
+        [
+          {
+            "node": "Valid Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Request?": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Already Handled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Pending": {
+      "main": [
+        [
+          {
+            "node": "Restore Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Data": {
+      "main": [
+        [
+          {
+            "node": "Set Cert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Nightly 23:00": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet - Nightly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet - Nightly": {
+      "main": [
+        [
+          {
+            "node": "Find Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Pending": {
+      "main": [
+        [
+          {
+            "node": "Set Cert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Backfill Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet - Backfill",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet - Backfill": {
+      "main": [
+        [
+          {
+            "node": "Select Old Certificates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Old Certificates": {
+      "main": [
+        [
+          {
+            "node": "Set Cert Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Cert Data": {
+      "main": [
+        [
+          {
+            "node": "Copy Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy Template": {
+      "main": [
+        [
+          {
+            "node": "Fill Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fill Template": {
+      "main": [
+        [
+          {
+            "node": "Requires Email Delivery?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Export PDF": {
+      "main": [
+        [
+          {
+            "node": "Archive PDF in Drive",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Backfill?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Backfill?": {
+      "main": [
+        [
+          {
+            "node": "Mark Regenerated",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Certificate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Certificate": {
+      "main": [
+        [
+          {
+            "node": "Mark Issued",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Delivery Unknown (Review)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Sunday 09:00": {
+      "main": [
+        [
+          {
+            "node": "Read Sheet - Weekly",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Sheet - Weekly": {
+      "main": [
+        [
+          {
+            "node": "Weekly Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Rows": {
+      "main": [
+        [
+          {
+            "node": "Convert to XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to XLSX": {
+      "main": [
+        [
+          {
+            "node": "Email Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Handled?": {
+      "main": [
+        [
+          {
+            "node": "Skip Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requires Email Delivery?": {
+      "main": [
+        [
+          {
+            "node": "Mark Sending (Before Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Export PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sending (Before Gmail)": {
+      "main": [
+        [
+          {
+            "node": "Export PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5b75b63efdfc0f5853f57cb8150b63843de31fa4e8f630ee709540a667f4ef0b"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
