@@ -8,7 +8,7 @@ An n8n workflow that issues course-completion certificates. A trainer submits a 
 
 The design goal is safe delivery rather than raw speed: the ledger records `sending` before the email is attempted and `delivery_unknown` when Gmail's outcome is uncertain, so the workflow never retries an email that may already have been delivered. The canvas screenshots show it in the author's *DEPI Projects* n8n folder. The additional demonstration captures below show one successful certificate issuance with a ledger entry, delivered Gmail attachment, and generated PDF.
 
-![n8n workflow canvas — event-driven issuance lane](assets/canvas-1-event-driven-issuance.png)
+![Complete n8n hybrid certificate automation workflow v2](assets/demo-4-complete-workflow-v2.png)
 
 ## 2. Business Problem
 
@@ -186,15 +186,25 @@ certificate-automation-system/
 
 ## 10. Screenshots & Demonstrations
 
-The three original canvas captures show the design; the four newer demonstration screenshots show an example output from a successful certificate issuance. The screenshots **do not** independently establish recovery behavior, delivery-timeout handling, concurrent-request safety, catch-up execution, backfill execution, or reporting execution. No execution log export or failure-injection recording is included.
+The complete workflow canvas is shown at the top of this README. The additional canvas captures below zoom into the main parts of the design, and the demonstration screenshots show one example output from a successful certificate issuance. The screenshots **do not** independently establish recovery behavior, delivery-timeout handling, concurrent-request safety, catch-up execution, backfill execution, or reporting execution. No execution log export or failure-injection recording is included.
+
+### Workflow canvas details
+
+**1. Event-driven issuance lane.** The form intake path validates the request, checks duplicates, logs `pending`, and hands the data to the shared certificate pipeline.
+
+![n8n workflow canvas — event-driven issuance lane](assets/canvas-1-event-driven-issuance.png)
+
+**2. Catch-up, backfill, and weekly report lanes.** These scheduled and manual paths handle unfinished rows, controlled regeneration, and weekly reporting.
 
 ![Catch-up, backfill and weekly report lanes](assets/canvas-2-catchup-backfill-report.png)
+
+**3. Shared pipeline and delivery safety.** The shared section covers template copy/fill, PDF export, archival, email delivery, and delivery-safety status handling.
 
 ![Shared pipeline and delivery safety](assets/canvas-3-shared-pipeline-delivery-safety.png)
 
 ### Demonstrated output — certificate issuance
 
-These four captures are from a demonstration run with sample certificate data. They supplement the architecture diagrams rather than replace executable evidence.
+These three captures are from a demonstration run with sample certificate data. They supplement the architecture diagrams rather than replace executable evidence.
 
 **1. Google Sheets certificate ledger.** The newest visible row is recorded as `issued` with an ISO timestamp and template version `v2`. Other rows in the sheet are test fixtures or earlier data; the screenshot does not demonstrate those individual scenarios being executed.
 
@@ -207,10 +217,6 @@ These four captures are from a demonstration run with sample certificate data. T
 **3. Generated PDF.** The PDF preview shows the recipient name, course, score, date, and certificate ID populated in the certificate template.
 
 ![Generated sample course-completion PDF certificate](assets/demo-3-generated-certificate-pdf.png)
-
-**4. Complete v2 canvas.** The updated layout shows the four lanes and the shared generation/delivery pipeline, including the delivery-safety path.
-
-![Complete n8n hybrid certificate automation workflow v2](assets/demo-4-complete-workflow-v2.png)
 
 > **Privacy note:** Demo screenshots may show the author's email address, Google document IDs, and account UI. Review/redact these details before making the images public if you do not want them disclosed. No OAuth access tokens or passwords appear in the workflow JSON export.
 
