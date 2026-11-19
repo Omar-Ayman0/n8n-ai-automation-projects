@@ -101,7 +101,6 @@ Thresholds are demonstration defaults, not accounting policy. The confidence sco
 invoice-processing-system/
 ├── README.md
 ├── workflow.json
-├── PORTFOLIO-ENTRY.md
 ├── assets/
 │   └── n8n-workflow-canvas.png
 ├── samples/
@@ -182,7 +181,6 @@ Prototype exported and demonstrated with a scanned test invoice and human approv
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/invoice-processing-system.mmd)
 
 ```mermaid
 flowchart LR

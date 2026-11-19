@@ -150,7 +150,6 @@ Reported by the author as used in production at a tutoring center. The exported 
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/students-booking-system.mmd)
 
 ```mermaid
 flowchart LR

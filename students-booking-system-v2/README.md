@@ -88,7 +88,6 @@ V1 was built for the original client and retained as a separate historical artif
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/students-booking-system-v2.mmd)
 
 ```mermaid
 flowchart LR

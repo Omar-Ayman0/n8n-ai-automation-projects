@@ -4,7 +4,7 @@
 
 ## 1. Project Overview
 
-A Telegram customer-service agent that answers questions from documents stored in a Supabase vector store, with a Google Drive-triggered ingestion flow in the same workflow. It evolved from the author's earlier RAG AI Agent; the system prompt still mentions Pinecone, although this workflow stores vectors in Supabase.
+A Telegram customer-service agent that answers questions from documents stored in a Supabase vector store, with a Google Drive-triggered ingestion flow in the same workflow. It evolved from the author's earlier RAG AI Agent; the system prompt (previously still referring to Pinecone) now matches the Supabase store.
 
 ![Workflow canvas](assets/supabase-rag-ai-agent.png)
 
@@ -21,10 +21,11 @@ The workflow keeps a Supabase vector store as the knowledge base and instructs t
 ```mermaid
 flowchart LR
     subgraph ING["RAG Database - ingestion"]
-        GDT["Google Drive Trigger<br/>fileCreated, polls every minute"] --> DL["Download file"]
+        GDT["Google Drive Trigger<br/>fileCreated, polls every minute"] --> DL["Download file<br/>id from trigger"]
         DL --> VSI["Supabase Vector Store<br/>mode: insert, table: documents"]
         EMB["Embeddings Google Gemini"] -.->|embedding| VSI
-        LOAD["Default Data Loader<br/>binary, metadata: file name"] -.->|document| VSI
+        LOAD["Default Data Loader<br/>binary, metadata: source_file"] -.->|document| VSI
+        SPL["Recursive Character Text Splitter<br/>1000 / 150"] -.->|splitter| LOAD
     end
 
     subgraph CHAT["RAG AI Agent Assistant - chat"]
@@ -57,22 +58,22 @@ flowchart LR
 | Telegram | Chat interface (trigger and reply) |
 | Simple Memory (window buffer) | Per-user conversation memory |
 
-Node counts in the export: 14 nodes, of which 12 are functional and 2 are sticky notes (2 vector store nodes, 2 embeddings nodes, 2 Telegram nodes, 2 Google Drive nodes, 1 data loader, 1 agent, 1 chat model, 1 memory).
+Node counts in the export: 14 nodes, of which 12 are functional and 2 are sticky notes (2 vector store nodes, 2 embeddings nodes, 2 Telegram nodes, 2 Google Drive nodes, 1 data loader, 1 text splitter, 1 agent, 1 chat model, 1 memory); the splitter was added in the 2026-11-20 revision.
 
 ## 7. Workflow Execution
 
 **Ingestion**
 
 1. **Google Drive Trigger** watches a specific folder every minute and fires when a file is created.
-2. **Download file** downloads a file from Google Drive.
-3. **Default Data Loader** reads the binary data and stores the file name as metadata.
+2. **Download file** downloads the file that fired the trigger (`fileId = {{ $json.id }}`).
+3. **Recursive Character Text Splitter** (1000 characters, 150 overlap) splits the text and **Default Data Loader** stores the file name as `source_file` metadata.
 4. **Embeddings Google Gemini** creates the embeddings, and **Supabase Vector Store** inserts them into the `documents` table with an embedding batch size of 20.
 
 **Chat**
 
 1. **Telegram Trigger** receives each incoming message.
 2. **AI Agent** answers using Google Gemini, with **Simple Memory** keyed by the Telegram user id and a context window of 500.
-3. The system prompt tells the agent to act as a customer-service agent and to check the vector store first to confirm the answer.
+3. The system prompt tells the agent to search the Supabase knowledge base first, answer only from retrieved content, say so when nothing is found, cite `source_file`, and treat retrieved text as data rather than instructions.
 4. The agent calls **Supabase Vector Store1**, configured as a retrieval tool over the same `documents` table, with **Embeddings Google Gemini1** for the query embedding.
 5. **Send a text message** returns the agent's output to the sender.
 
@@ -97,7 +98,6 @@ supabase-rag-ai-agent/
 3. Prepare Supabase with a `documents` table set up for the n8n Supabase Vector Store node.
 4. Replace the placeholders:
    - `YOUR_GOOGLE_DRIVE_FOLDER_ID` in `Google Drive Trigger`
-   - `YOUR_GOOGLE_DRIVE_FILE_ID` in `Download file`
    - `REPLACE_WITH_YOUR_CREDENTIAL` on each credential
 5. Select a chat model in `Google Gemini Chat Model`, then activate the workflow and message your Telegram bot.
 
@@ -107,32 +107,30 @@ supabase-rag-ai-agent/
 
 ## 11. Limitations & Future Improvements
 
-**Known limitations**
+> **Revision note (2026-11-20).** The hardening changes below were made in the exported JSON and checked structurally (valid JSON, wiring, no leftover IDs). They have **not been re-run in n8n**; import, attach credentials and test before relying on them.
 
-- **`Download file` is set to a fixed Drive file.** Its file is selected from a list rather than mapped from the trigger's output, so as exported, every trigger run would download the same file instead of the newly created one.
-- **Credentials are missing in the export for the two Google Drive nodes and for `Google Gemini Chat Model`.** The canvas shows warning icons on `Google Drive Trigger`, `Download file` and `AI Agent`.
-- **The chat model name is not specified** in the export for `Google Gemini Chat Model`, and the embeddings model is not specified for either embeddings node.
-- **The system prompt mentions Pinecone**, but the workflow uses Supabase.
-- **No text splitter node** is connected to `Default Data Loader`, and retrieval options such as number of results are not specified.
-- **Only newly created files are ingested** (`fileCreated`). Edited or deleted files are not handled.
+**Fixed in this revision**
 
-**Possible improvements**
+- `Download file` now reads the file ID from the trigger, so every newly created file is ingested (it was fixed to one file).
+- A `Recursive Character Text Splitter` is attached to `Default Data Loader` (chunk 1000, overlap 150).
+- The system prompt now refers to Supabase (it said Pinecone), requires retrieval before answering, forbids guessing and asks for the source file name.
+- The retrieval tool has `topK = 4` and a descriptive tool description.
 
-- Map `Download file` to the file ID from `Google Drive Trigger` so each new file is ingested.
-- Attach the missing credentials and set the chat model explicitly.
-- Update the system prompt to reference Supabase instead of Pinecone.
-- Add a text splitter and set retrieval options such as the number of results returned.
-- Handle updated and deleted files to keep the vector store in sync.
-- Ask the agent to name the source file when it answers.
+**Still open**
+
+- Credentials are missing in the export for the two Google Drive nodes and for the Gemini chat model; the chat model and embeddings model names are not set in the export.
+- Only newly created files are ingested (`fileCreated`). Edited or deleted files are not synchronised, so re-uploading a changed file would create duplicate chunks.
+- Large files and non-text PDFs are not handled; there is no retrieval-quality evaluation set.
+- The bot is intentionally open to any Telegram user (it models a customer-facing assistant), so rate limiting and abuse protection would be needed in production.
+- No tests against a live Supabase instance have been run for this version.
 
 ## 12. Project Status
 
-Workflow exported and documented, with known configuration gaps (see limitations). In particular, `Download file` is fixed to a single Drive file in this export, so automatic ingestion of each new file is not working as exported. No deployment or accuracy metrics are claimed.
+Workflow exported, documented and corrected (ingestion mapping, text splitter, prompt). The corrected version has not been executed end to end, and credentials and model names still need configuring. No deployment or accuracy metrics are claimed.
 
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/supabase-rag-ai-agent.mmd)
 
 ```mermaid
 flowchart LR
@@ -152,6 +150,8 @@ flowchart LR
   N1 --> N10
   N2 --> N10
   N3 --> N10
+  NS["Recursive Character Text Splitter"]
+  NS --> N3
   N4 --> N9
   N6 --> N4
   N7 --> N11

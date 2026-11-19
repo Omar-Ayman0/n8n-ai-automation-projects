@@ -254,7 +254,6 @@ Sanitized export of a demonstrated prototype, documented from the workflow file.
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/certificate-automation-system.mmd)
 
 ```mermaid
 flowchart LR

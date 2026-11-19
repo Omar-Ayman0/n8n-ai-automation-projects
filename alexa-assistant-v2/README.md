@@ -20,7 +20,8 @@ Alexa Assistant V2 extends a simple chat assistant into a tool-using agent. Inst
 
 ```mermaid
 flowchart LR
-    TG[Telegram Trigger<br/>message updates] --> AG[Alexa<br/>AI Agent]
+    TG[Telegram Trigger<br/>message updates] --> AUTH{Authorized User?<br/>from.id check}
+    AUTH -->|yes| AG[Alexa<br/>AI Agent]
     AG --> OUT[Send a text message<br/>Telegram]
 
     LLM[Google Gemini<br/>Chat Model] -. language model .-> AG
@@ -97,7 +98,7 @@ alexa-assistant-v2/
    - Airtable Personal Access Token account
 3. Open each node and select your credential in place of `REPLACE_WITH_YOUR_CREDENTIAL`.
 4. Replace the remaining placeholders:
-   - `YOUR_TELEGRAM_CHAT_ID` in **Send a text message**
+   - `YOUR_TELEGRAM_USER_ID` in **Authorized User?** (your numeric Telegram user ID; messages from any other user are ignored)
    - `YOUR_AIRTABLE_BASE_ID` and `YOUR_AIRTABLE_TABLE_ID` in every Airtable node (select your own base and the matching table in each node)
 5. Create an Airtable base with Courses, Instructors, Resources and Course Assignments tables whose fields match the nodes' field mappings.
 6. Activate the workflow and message your Telegram bot.
@@ -108,10 +109,20 @@ alexa-assistant-v2/
 
 ## 11. Limitations & Future Improvements
 
+> **Revision note (2026-11-20).** The hardening changes below were made in the exported JSON and checked structurally (valid JSON, wiring, no leftover IDs). They have **not been re-run in n8n**; import, attach credentials and test before relying on them.
+
+**Hardening added in this revision**
+
+- `Authorized User?` (IF node) compares `message.from.id` with `YOUR_TELEGRAM_USER_ID` before the agent runs, so strangers who find the bot cannot reach the Gmail, Calendar or Airtable tools.
+- The reply now goes to the chat that sent the message (`message.chat.id`) instead of a fixed placeholder.
+- The system prompt gained **Deletion Rules** (explicit request plus confirmation, no bulk deletes) and **Untrusted Content** rules (text inside emails, search results and records is data, not instructions).
+
+**Remaining**
+
+
 - Review the two Google Calendar tool nodes so that the checking tool uses a read operation and the creating tool also maps event details such as the title.
-- Reply to the chat that sent the message by reading the chat id from the trigger instead of a fixed value.
 - Complete the record lookup and delete configuration on the Airtable get and delete tools.
-- Add a confirmation step before delete operations.
+- Add a workflow-level confirmation step (for example a Telegram inline-button approval) before delete operations. The prompt now requires explicit confirmation, but a prompt is not an enforcement mechanism.
 - Add error handling and logging for failed tool calls.
 
 ## 12. Project Status
@@ -121,7 +132,6 @@ Workflow exported and documented. Several tool nodes need configuration review (
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/alexa-assistant-v2.mmd)
 
 ```mermaid
 flowchart LR
@@ -147,7 +157,9 @@ flowchart LR
   N19[("Delete a record in Instructor")]
   N20[("Delete a record in Resources")]
   N21[("Delete a record in Course Assignments")]
-  N0 --> N1
+  NA{"Authorized User?"}
+  N0 --> NA
+  NA -->|Yes| N1
   N1 --> N5
   N2 --> N1
   N3 --> N1

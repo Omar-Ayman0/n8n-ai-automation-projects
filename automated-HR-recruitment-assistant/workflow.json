@@ -930,6 +930,39 @@
           "name": "Google Gemini(PaLM) Api account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c01a0ac6-f6f4-40d1-a4af-0bab68cc4e77",
+              "leftValue": "={{ $json.callback_query.from.id }}",
+              "rightValue": "YOUR_TELEGRAM_USER_ID",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        444,
+        308
+      ],
+      "id": "b02066c2-204c-4745-baee-350c1c4202e1",
+      "name": "Authorized Recruiter?"
     }
   ],
   "connections": {
@@ -1021,7 +1054,7 @@
       "main": [
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Authorized Recruiter?",
             "type": "main",
             "index": 0
           }
@@ -1107,6 +1140,17 @@
           {
             "node": "AI Agent",
             "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorized Recruiter?": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
             "index": 0
           }
         ]

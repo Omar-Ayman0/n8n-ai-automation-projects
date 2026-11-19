@@ -174,7 +174,6 @@ Workflow exported and documented. Setup steps above are required before it can r
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/hse-incident-weekly-analysis.mmd)
 
 ```mermaid
 flowchart LR

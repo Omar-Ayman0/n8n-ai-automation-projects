@@ -30,7 +30,8 @@ Split the jobs between two specialist agents and put a supervisor in front of th
 
 ```mermaid
 flowchart TD
-    TG["Telegram Trigger<br/>message"] --> SUP["Supervisor<br/>AI Agent"]
+    TG["Telegram Trigger<br/>message"] --> AUTH{"Authorized User?"}
+    AUTH -->|Yes| SUP["Supervisor<br/>AI Agent"]
     SUP --> OUT["Send a text message<br/>Telegram"]
 
     LLM0["Google Gemini Chat Model"] -.->|model| SUP
@@ -95,6 +96,7 @@ multi-agent-patterns/
    - Google Gemini (PaLM) API account
    - SerpApi account
 3. Replace `REPLACE_WITH_YOUR_CREDENTIAL` on each credential.
+   - Set `YOUR_TELEGRAM_USER_ID` in **Authorized User?** (your numeric Telegram user ID). This protects your SerpApi and Gemini quota from other users of the bot.
 4. Check that `Google search in SerpApi` has its search query configured, then activate the workflow and message your Telegram bot.
 
 ## 10. Screenshots & Demonstrations
@@ -102,6 +104,10 @@ multi-agent-patterns/
 ![Workflow canvas](assets/multi-agent-system.png)
 
 ## 11. Limitations & Future Improvements
+
+> **Revision note (2026-11-20).** The hardening changes below were made in the exported JSON and checked structurally (valid JSON, wiring, no leftover IDs). They have **not been re-run in n8n**; import, attach credentials and test before relying on them.
+
+- **Added:** `Authorized User?` checks `message.from.id` before the supervisor runs.
 
 **Known limitations**
 
@@ -127,7 +133,6 @@ Workflow exported and documented. One pattern is available. The SerpApi tool's s
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/multi-agent-patterns.mmd)
 
 ```mermaid
 flowchart LR
@@ -143,7 +148,9 @@ flowchart LR
   N9["Search Agent Memory"]
   N10["Data Analyst Memory"]
   N11["Supervisor Memory"]
-  N0 --> N2
+  NA{"Authorized User?"}
+  N0 --> NA
+  NA -->|Yes| N2
   N1 --> N2
   N3 --> N6
   N4 --> N7

@@ -33,7 +33,8 @@ flowchart TD
     end
 
     subgraph B["Flow 2: Recruiter decision"]
-        TT["Telegram Trigger<br/>callback_query"] --> CODE["Code in JavaScript<br/>parse action, email, level"]
+        TT["Telegram Trigger<br/>callback_query"] --> AUTH{"Authorized Recruiter?<br/>from.id check"}
+        AUTH -->|Yes| CODE["Code in JavaScript<br/>parse action, email, level"]
         CODE --> AR{"action = accept?"}
         AR -- "Accept" --> AE["Gmail<br/>Accepted Email"]
         AE --> UA["Google Sheets<br/>Update Status To Accepted"]
@@ -90,15 +91,16 @@ flowchart TD
 ```text
 automated-HR-recruitment-assistant/
 ├── README.md
-├── workflow.json            # n8n export (primary file, documented here)
-├── hr-ai-agent.json         # second export of the same workflow (see note)
+├── workflow.json            # n8n export (import this file)
 └── assets/
     ├── n8n-workflow-canvas.png
     ├── telegram-notification.png
     └── google-sheet-candidates.png
 ```
 
-> **Note.** `hr-ai-agent.json` and `workflow.json` have the same 19 nodes and identical connections. They differ in placeholder values and in the text of several node parameters (including the Code node). This README describes `workflow.json`. Keep one of them as the canonical export.
+> **Revision note (2026-11-20).** The hardening changes below were made in the exported JSON and checked structurally (valid JSON, wiring, no leftover IDs). They have **not been re-run in n8n**; import, attach credentials and test before relying on them.
+
+> The earlier duplicate export `hr-ai-agent.json` was removed; `workflow.json` is the single canonical file (now 20 nodes).
 
 ## 9. Installation & Configuration
 
@@ -119,6 +121,7 @@ automated-HR-recruitment-assistant/
 |---|---|---|
 | `YOUR_SHEET_ID` | All Google Sheets nodes | Select your spreadsheet again in each node |
 | `YOUR_TELEGRAM_CHAT_ID` | `Notify The HR`, `Duplicated Candidate Message` | The recruiter's Telegram chat ID |
+| `YOUR_TELEGRAM_USER_ID` | `Authorized Recruiter?` | The recruiter's numeric Telegram user ID (only this user's button taps are processed) |
 | `[Insert Calendly or Scheduling Link Here]` | `Accepted Email` | Your scheduling link |
 
 5. Activate the workflow and submit a test application using the form's test URL.
@@ -139,6 +142,7 @@ Identified by reading the workflow JSON; test before any production use.
 
 - **Level name normalisation.** The Code node converts `MID_LEVEL` to `MID LEVEL` (with a space), and that value is used as the sheet tab name in the reject path (`Get row(s) in sheet`, `Delete Candidate From Level Sheet`). The append step uses `MID_LEVEL`. Keeping one canonical value would make both paths consistent.
 - **Email personalisation.** The email templates use a `name` field that the Code node does not output, so the greeting falls back to "Candidate". The acceptance email also contains a fixed sentence about specific skills and a scheduling-link placeholder.
+- **Authorization (added).** `Authorized Recruiter?` now checks `callback_query.from.id` before any email is sent or any row is changed. Taps from anyone else are silently dropped. Not yet re-run in n8n.
 - **Telegram callback.** `callback_query_id` is extracted but no node acknowledges the callback, so the recruiter gets no confirmation and the buttons stay active. Telegram also limits `callback_data` to 64 bytes, which a long email plus level could exceed.
 - **Double decisions.** The current status is not checked before sending an email, so pressing both buttons would send two emails.
 - **Data stored.** The `Note` field is used by the AI but not saved to the sheet; `Skills` and `Experience` are stored wrapped in quotes.
@@ -152,7 +156,6 @@ Workflow exported and documented, with redacted screenshots from a test run. The
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/automated-HR-recruitment-assistant.mmd)
 
 ```mermaid
 flowchart LR
@@ -183,7 +186,9 @@ flowchart LR
   N4 -->|No| N1
   N6 --> N7
   N7 --> N8
-  N9 --> N10
+  N19{"Authorized Recruiter?"}
+  N9 --> N19
+  N19 -->|Yes| N10
   N10 --> N11
   N11 -->|Yes| N12
   N11 -->|No| N13

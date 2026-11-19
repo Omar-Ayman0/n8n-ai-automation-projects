@@ -1,21 +1,38 @@
 <div align="center">
 
-<img src="assets/portfolio-hero.svg" alt="Omar Ayman Fathi — AI Automation Engineering Portfolio" width="100%">
+<img src="assets/portfolio-hero.svg" alt="Omar Ayman — AI Automation Engineering Portfolio" width="100%">
 
 <br>
 
-<a href="https://github.com/Omar-Ayman0"><img src="https://img.shields.io/badge/GitHub-Omar--Ayman0-111827?style=for-the-badge&logo=github" alt="GitHub"></a>
-<a href="https://www.linkedin.com/in/omar-ayman-2a2182390/"><img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=for-the-badge&logo=linkedin" alt="LinkedIn"></a>
-<img src="https://img.shields.io/badge/Focus-AI%20Automation-0F766E?style=for-the-badge" alt="Focus">
-<img src="https://img.shields.io/badge/Platform-n8n-EA4B71?style=for-the-badge&logo=n8n" alt="n8n">
+<a href="https://github.com/Omar-Ayman0/n8n-ai-automation-projects/actions"><img src="https://img.shields.io/github/actions/workflow/status/Omar-Ayman0/n8n-ai-automation-projects/checks.yml?branch=main&style=for-the-badge&label=offline%20checks&logo=githubactions&logoColor=white" alt="Offline checks"></a>
+<img src="https://img.shields.io/badge/Platform-n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white" alt="n8n">
+<img src="https://img.shields.io/badge/AI-Gemini%20%C2%B7%20RAG%20%C2%B7%20Agents-0F766E?style=for-the-badge" alt="AI">
+<img src="https://img.shields.io/badge/License-MIT-334155?style=for-the-badge" alt="MIT">
 
-### Building practical automation systems with AI, workflows, and connected business tools.
+<br>
 
-**AI Automation Engineering · n8n · AI Agents · RAG · API Integrations**
+<a href="https://github.com/Omar-Ayman0"><img src="https://img.shields.io/badge/GitHub-Omar--Ayman0-111827?style=flat-square&logo=github" alt="GitHub"></a>
+<a href="https://www.linkedin.com/in/omar-ayman-2a2182390/"><img src="https://img.shields.io/badge/LinkedIn-Connect-0A66C2?style=flat-square&logo=linkedin" alt="LinkedIn"></a>
+<a href="README.ar.md"><img src="https://img.shields.io/badge/%D8%A7%D9%84%D8%B9%D8%B1%D8%A8%D9%8A%D8%A9-%D9%85%D9%84%D8%AE%D8%B5-475569?style=flat-square" alt="Arabic summary"></a>
 
-[Explore Featured Projects](#-featured-projects) · [Browse All Projects](#-project-directory) · [Technical Skills](#-technical-toolkit) · [Contact](#-connect)
+<br><br>
+
+**[Featured projects](#-featured-projects)** &nbsp;·&nbsp; **[More projects](#-more-projects)** &nbsp;·&nbsp; **[Toolkit](#-technical-toolkit)** &nbsp;·&nbsp; **[Quality checks](#-quality-checks)** &nbsp;·&nbsp; **[Contact](#-connect)**
 
 </div>
+
+<br>
+
+## ⚡ 30-second tour
+
+| If you want to see… | Open |
+|---|---|
+| **Reliability thinking** (idempotency, ledger, partial-write repair) | [Students Booking V2](students-booking-system-v2/README.md) · [Certificate Automation](certificate-automation-system/README.md) |
+| **AI with guardrails** (LLM extraction + rules + human approval) | [Invoice Processing](invoice-processing-system/README.md) |
+| **Honest testing** (what was observed vs. what is still pending) | [V2 test report](students-booking-system-v2/docs/TEST_REPORT.md) · [V2 limitations](students-booking-system-v2/docs/LIMITATIONS.md) |
+| **Real client work** | [Students Booking V1](students-booking-system/README.md) |
+
+<sub>Legend used across the repo: **client deployment** · **team project** · **training-track project (DEPI)** · **prototype**. Numbers marked *author-reported* are not measured by this repository.</sub>
 
 ---
 
@@ -35,40 +52,23 @@ This repository brings together independent work, educational projects, team col
 
 </div>
 
-## ✨ Portfolio at a Glance
-
-<div align="center">
-
-| 10 | 1 | 2 | 50 |
-|:---:|:---:|:---:|:---:|
-| Project folders in this repo | External collaborative research project | Booking-system iterations | Synthetic registrations in the V2 demo |
-
-</div>
-
-<sub>ASTROHEALTH is maintained in a separate repository. The 50-registration figure is the recorded synthetic V2 demonstration, not a production throughput benchmark.</sub>
 
 ## 🧭 Contents
 
 - [Featured Projects](#-featured-projects)
-  - [Intelligent Invoice Processing](#1-intelligent-invoice-processing--human-in-the-loop-validation)
-  - [Students Booking System V2](#2-students-booking-system--v2-reliability-upgrade)
-  - [Certificate Automation System](#3-certificate-automation-system--hybrid-v2)
-  - [HSE Incident Weekly Analysis](#4-hse-incident-weekly-analysis--team-project)
-  - [WooCommerce Order Tracking](#5-woocommerce-order-tracking--secure-webhook-automation)
-  - [AI Recruitment Assistant](#6-ai-recruitment-assistant--human-approved-candidate-screening)
-  - [ASTROHEALTH](#7-astrohealth--astronaut-health-monitoring-research-prototype)
-- [Additional Projects](#-additional-projects)
+- [More Projects](#-more-projects)
 - [Technical Toolkit](#-technical-toolkit)
 - [Engineering Principles](#-engineering-principles)
+- [Quality Checks](#-quality-checks)
 - [Repository Structure](#-repository-structure)
-- [Getting Started](#-getting-started)
 - [Connect](#-connect)
 
 ---
 
 # 🚀 Featured Projects
 
-The projects below are highlighted for the engineering concepts they demonstrate. Open each case study for its complete setup guide, workflow export, implementation notes, and limitations.
+Three projects are highlighted for the engineering concepts they demonstrate. Each case study has a setup guide, workflow export, limitations and an honest evidence table.
+
 
 ## 1. Intelligent Invoice Processing & Human-in-the-Loop Validation
 
@@ -257,200 +257,21 @@ flowchart TD
 
 ---
 
-## 4. HSE Incident Weekly Analysis — Team Project
-
-<sub>AI-POWERED REPORTING · SCHEDULED AUTOMATION · TEAM COLLABORATION</sub>
-
-A scheduled workflow that processes HSE incident notification emails and prepares a structured weekly report for management.
-
-**Workflow overview**
-
-1. Runs on a weekly schedule.
-2. Reads the previous seven days of incident emails from Microsoft Outlook.
-3. Prepares the source content for AI analysis.
-4. Uses an AI agent to extract severity, root causes, and trends into structured output.
-5. Generates an HTML report and emails it through Gmail.
-6. Sends a heartbeat email when no incidents are found and uses a separate error-alert path.
-
-**Architecture**
-
-```mermaid
-flowchart LR
-    A["Weekly schedule"] --> B["Outlook: last 7 days"]
-    B --> C["Clean and prepare emails"]
-    C --> D{"Any incidents?"}
-    D -- "No" --> E["No-incidents heartbeat"]
-    D -- "Yes" --> F["AI Agent + structured output"]
-    F --> G["HTML weekly report"]
-    G --> H["Gmail delivery"]
-    F -. "model fallback" .-> I["OpenRouter fallback"]
-```
-
-**Workflow and report evidence**
-
-<div align="center">
-<img src="hse-incident-weekly-analysis/assets/n8n-workflow-canvas.png" alt="HSE weekly analysis n8n workflow canvas" width="100%">
-<br><sub>HSE weekly analysis workflow canvas</sub>
-</div>
-
-<div align="center">
-<img src="hse-incident-weekly-analysis/assets/sample-report-preview.png" alt="HSE sample weekly report preview" width="100%">
-<br><sub>Sample report preview — demonstration content</sub>
-</div>
-
-**Core stack:** n8n · Microsoft Outlook · Google Gemini · OpenRouter · Gmail · JavaScript
-
-**Project context:** Collaborative team project. It is not presented as individual work; see the project README for the team and collaboration details.
-
-[**Open the full case study →**](hse-incident-weekly-analysis/README.md)
-
 ---
 
-## 5. WooCommerce Order Tracking — Secure Webhook Automation
+# 🧩 More Projects
 
-<sub>API INTEGRATION · WEBHOOK SECURITY · CUSTOMER NOTIFICATIONS</sub>
+| Project | Type | What it demonstrates | Case study |
+|---|---|---|---|
+| **HSE Incident Weekly Analysis** | **Team project** | Scheduled Outlook-to-report pipeline with AI agent, structured output, model fallback and heartbeat/error paths | [Open](hse-incident-weekly-analysis/README.md) |
+| **WooCommerce Order Tracking** | DEPI track project | HMAC signature verification on the raw body, topic filtering, sanitization, Apps Script integration | [Open](order-tracking-workflow/README.md) |
+| **AI Recruitment Assistant** | Independent | Duplicate check, Gemini classification, human Accept/Reject via Telegram (recruiter-only authorization added) | [Open](automated-HR-recruitment-assistant/README.md) |
+| **Supabase RAG AI Agent** | Independent | Drive ingestion, text splitting, Supabase vectors, grounded Telegram answers | [Open](supabase-rag-ai-agent/README.md) |
+| **Alexa Assistant V2** | Independent | Tool-calling agent over Gmail, Calendar, SerpApi and Airtable with user allow-list and deletion rules | [Open](alexa-assistant-v2/README.md) |
+| **Multi-Agent Patterns** | Independent | Supervisor agent coordinating a search agent and an analyst agent | [Open](multi-agent-patterns/README.md) |
+| **ASTROHEALTH** | Collaborative research prototype | Four n8n workflows around a simulated astronaut-health backend; separate repository | [Repository](https://github.com/Omar-Ayman0/NASA-Space-APP-Project) |
 
-An order-tracking workflow for small online stores. A WooCommerce event triggers n8n, which verifies the webhook signature, registers the order through a Google Apps Script web app, and emails the customer a tracking link.
-
-**Engineering highlights**
-
-- Verifies the HMAC signature against the raw request body.
-- Filters incoming webhook topics before processing.
-- Sanitizes incoming order data.
-- Checks the upstream Apps Script result explicitly.
-- Logs failed requests and returns an unauthorized response for invalid signatures.
-
-**Architecture**
-
-```mermaid
-flowchart TD
-    A["WooCommerce webhook"] --> B{"Expected order topic?"}
-    B -- "No" --> X["Ignore event"]
-    B -- "Yes" --> C{"HMAC signature valid?"}
-    C -- "No" --> D["Log failure + 401 response"]
-    C -- "Yes" --> E["Sanitize order fields"]
-    E --> F["Google Apps Script"]
-    F --> G{"Upstream result OK?"}
-    G -- "Yes" --> H["Email tracking link"]
-    G -- "No" --> I["Log / handle failure"]
-```
-
-**Workflow evidence**
-
-<div align="center">
-<img src="order-tracking-workflow/assets/n8n-workflow-canvas.png" alt="WooCommerce order tracking workflow canvas" width="100%">
-<br><sub>Order tracking n8n workflow canvas</sub>
-</div>
-
-**Core stack:** n8n · WooCommerce Webhooks · HMAC · Google Apps Script · Google Sheets · Gmail
-
-**Project context:** Developed in the DEPI AI Automation track and tested with simulated webhook events.
-
-[**Open the full case study →**](order-tracking-workflow/README.md) · [Demo package](order-tracking-workflow/samples/README.md)
-
----
-
-## 6. AI Recruitment Assistant — Human-Approved Candidate Screening
-
-<sub>AI CLASSIFICATION · HUMAN-IN-THE-LOOP · HR AUTOMATION</sub>
-
-An n8n recruitment pipeline that receives applications, checks for duplicates, classifies candidates with Google Gemini, and notifies a recruiter through Telegram. The recruiter makes the final accept/reject decision with an inline button; the workflow then sends the corresponding email and updates the candidate status.
-
-**Architecture**
-
-```mermaid
-flowchart TD
-    A["Application form"] --> B["Google Sheets duplicate check"]
-    B --> C{"Already exists?"}
-    C -- "Yes" --> D["Telegram duplicate alert"]
-    C -- "No" --> E["Gemini candidate classification"]
-    E --> F["Master candidate sheet"]
-    F --> G["Seniority-level sheet"]
-    G --> H["Telegram: Accept / Reject"]
-    H --> I["Recruiter decision"]
-    I --> J{"Decision"}
-    J -- "Accept" --> K["Gmail acceptance + status update"]
-    J -- "Reject" --> L["Gmail rejection + status update"]
-```
-
-**Workflow and interface evidence**
-
-<div align="center">
-<img src="automated-HR-recruitment-assistant/assets/n8n-workflow-canvas.png" alt="AI recruitment assistant workflow canvas" width="100%">
-<br><sub>Recruitment intake and human decision workflow</sub>
-</div>
-
-<div align="center">
-<img src="automated-HR-recruitment-assistant/assets/telegram-notification.png" alt="Recruiter Telegram notification with decision buttons" width="72%">
-<br><sub>Recruiter notification and human decision interface</sub>
-</div>
-
-**Core stack:** n8n · Google Gemini · Google Sheets · Telegram Bot API · Gmail · JavaScript
-
-[**Open the full case study →**](automated-HR-recruitment-assistant/README.md)
-
----
-
-## 7. ASTROHEALTH — Astronaut Health Monitoring Research Prototype
-
-<sub>COLLABORATIVE PROJECT · AI ASSISTANT · SYSTEM INTEGRATION</sub>
-
-ASTROHEALTH is a separate collaborative research prototype for simulated space missions. Its automation layer contains four n8n workflows that connect a Health Engine and backend services with health alerts, AI-assisted briefings and Q&A, incident review actions, and mission connection monitoring.
-
-**Automation contribution described in the project repository**
-
-- Four n8n workflows for alert intake, AI health assistance, incident review, and connection monitoring.
-- Gemini-powered health briefings and evidence-based Q&A.
-- Authenticated backend integration, input validation, and error handling.
-- Integration and test documentation.
-
-**Architecture**
-
-```mermaid
-flowchart LR
-    E["Health Engine"] --> B["Backend / SQLite"]
-    E --> W1["WF01: Health Alert"]
-    W1 -->|"incident upsert"| B
-    U["Mission Control UI"] -->|"question"| W2["WF02: AI Assistant"]
-    W2 -->|"read report / events"| B
-    U -->|"review action"| W3["WF03: Incident Review"]
-    W3 -->|"persist action"| B
-    M["Manual trigger"] --> W4["WF04: Connection Monitor"]
-    W4 -->|"read status"| B
-```
-
-**Project boundaries and status**
-
-This repository contains the n8n automation layer, not the complete Health Engine, backend, or frontend source code. It uses synthetic simulator data and is a research prototype—not a medical device. The external project README documents which workflow paths were tested and which still require end-to-end verification.
-
-[**Open ASTROHEALTH repository →**](https://github.com/Omar-Ayman0/NASA-Space-APP-Project) · [Project documentation](https://github.com/Omar-Ayman0/NASA-Space-APP-Project/blob/main/README.md)
-
----
-
-# 🧩 Additional Projects
-
-The following projects expand the portfolio across conversational agents, retrieval systems, and multi-agent orchestration.
-
-| Project | What it demonstrates | Documentation |
-|---|---|---|
-| **Alexa Assistant V2** | Telegram-based tool-calling assistant connected to Gmail, Google Calendar, SerpApi, and Airtable course-management tables | [Case study](alexa-assistant-v2/README.md) |
-| **Supabase RAG AI Agent** | Google Drive ingestion, embeddings, Supabase vector retrieval, and Telegram Q&A | [Case study](supabase-rag-ai-agent/README.md) |
-| **Multi-Agent Patterns** | Supervisor agent coordinating specialized research and analyst sub-agents | [Case study](multi-agent-patterns/README.md) |
-
-<div align="center">
-<img src="multi-agent-patterns/assets/multi-agent-system.png" alt="Multi-agent supervisor workflow" width="88%">
-<br><sub>Supervisor and specialist-agent workflow</sub>
-</div>
-
-<div align="center">
-<img src="supabase-rag-ai-agent/assets/supabase-rag-ai-agent.png" alt="Supabase RAG workflow" width="88%">
-<br><sub>Supabase RAG ingestion and conversational retrieval workflow</sub>
-</div>
-
-<div align="center">
-<img src="alexa-assistant-v2/assets/alexa-assistant-v2.png" alt="Alexa Assistant V2 workflow" width="88%">
-<br><sub>Alexa Assistant V2 — tool-calling integrations</sub>
-</div>
+> Status labels are deliberate: *team*, *track project*, *prototype* and *client deployment* are different things and are never mixed.
 
 ---
 
@@ -477,29 +298,41 @@ The following projects expand the portfolio across conversational agents, retrie
 
 ---
 
-# 📁 Project Directory
+## ✅ Quality Checks
+
+Run locally (Node 18+, no dependencies) or automatically on every push through GitHub Actions:
+
+```bash
+node scripts/validate-repo.js                                   # JSON validity, wiring, placeholders, secrets, links
+node students-booking-system-v2/tests/run-engine-tests.js      # V2 booking engine logic (27 checks)
+node certificate-automation-system/tests/run-code-node-tests.js # certificate Code nodes + wiring (32 checks)
+node invoice-processing-system/tests/run-code-node-tests.js     # invoice validation + routing (10 checks)
+```
+
+These are **offline logic tests**. They do not call Google, Telegram, Gmail or n8n, and they are not a concurrency or end-to-end test. Each project's `TEST_REPORT` / limitations section says which scenarios are still pending.
+
+## 📁 Repository Structure
 
 ```text
 .
-├── README.md
-├── CHANGELOG.md
-├── CONTRIBUTING.md
-├── LICENSE
-├── PROJECTS_INDEX.md
-│
-├── alexa-assistant-v2/
-├── automated-HR-recruitment-assistant/
-├── certificate-automation-system/
-├── hse-incident-weekly-analysis/
+├── README.md  ·  README.ar.md (Arabic summary)
+├── CHANGELOG.md  ·  CONTRIBUTING.md  ·  PROJECTS_INDEX.md  ·  LICENSE
+├── scripts/validate-repo.js
+├── .github/workflows/checks.yml
+├── docs/guides/PROJECT_README_TEMPLATE.md
 ├── invoice-processing-system/
-├── multi-agent-patterns/
+├── students-booking-system/            # V1 (client deployment)
+├── students-booking-system-v2/         # V2 reliability upgrade (demo)
+├── certificate-automation-system/
+├── hse-incident-weekly-analysis/       # team project
 ├── order-tracking-workflow/
-├── students-booking-system/
-├── students-booking-system-v2/
-└── supabase-rag-ai-agent/
+├── automated-HR-recruitment-assistant/
+├── supabase-rag-ai-agent/
+├── alexa-assistant-v2/
+└── multi-agent-patterns/
 ```
 
-ASTROHEALTH is maintained in a separate repository and is linked above.
+ASTROHEALTH lives in a separate repository (linked above).
 
 ## ▶️ Getting Started
 

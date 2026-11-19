@@ -266,6 +266,39 @@
       ],
       "id": "00930bbc-dc89-4aaf-8e56-aa34a94755e2",
       "name": "Supervisor Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0e7cc5a2-bade-4bb0-ae22-7a60b97c80ed",
+              "leftValue": "={{ $json.message.from.id }}",
+              "rightValue": "YOUR_TELEGRAM_USER_ID",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -164,
+        -492
+      ],
+      "id": "f02eb2b7-53e0-4658-8fb6-563f9fc66e37",
+      "name": "Authorized User?"
     }
   ],
   "connections": {
@@ -273,7 +306,7 @@
       "main": [
         [
           {
-            "node": "Supervisor",
+            "node": "Authorized User?",
             "type": "main",
             "index": 0
           }
@@ -385,6 +418,17 @@
           {
             "node": "Supervisor",
             "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorized User?": {
+      "main": [
+        [
+          {
+            "node": "Supervisor",
+            "type": "main",
             "index": 0
           }
         ]

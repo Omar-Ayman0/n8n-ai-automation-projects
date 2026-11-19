@@ -137,7 +137,6 @@ Workflow exported and documented. It was developed against Postman-simulated web
 
 ## Architecture Diagram
 
-Source: [Architecture diagram](../assets/diagrams/order-tracking-workflow.mmd)
 
 ```mermaid
 flowchart LR
