@@ -117,3 +117,55 @@ alexa-assistant-v2/
 ## 12. Project Status
 
 Workflow exported and documented. Several tool nodes need configuration review (see above) before reliable use. No deployment or usage metrics are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/alexa-assistant-v2.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Telegram Trigger"}}
+  N1(["Alexa"])
+  N2["Simple Memory"]
+  N3["Google search in SerpApi"]
+  N4[("Check Mails")]
+  N5[("Send a text message")]
+  N6["Check Events"]
+  N7["Create Events"]
+  N8[("Create Emails")]
+  N9(["Google Gemini Chat Model"])
+  N10[("Get Data - Courses")]
+  N11[("Get Data - Instructors")]
+  N12[("Get Data - Resources")]
+  N13[("Get Data - Course Assignments")]
+  N14[("Create \ Update Data - Courses")]
+  N15[("Create \ Update Data - Instructors")]
+  N16[("Create \ Update Data - Resources")]
+  N17[("Create \ Update Data - Course Assignments")]
+  N18[("Delete a record in Course")]
+  N19[("Delete a record in Instructor")]
+  N20[("Delete a record in Resources")]
+  N21[("Delete a record in Course Assignments")]
+  N0 --> N1
+  N1 --> N5
+  N2 --> N1
+  N3 --> N1
+  N4 --> N1
+  N6 --> N1
+  N7 --> N1
+  N8 --> N1
+  N9 --> N1
+  N10 --> N1
+  N11 --> N1
+  N12 --> N1
+  N13 --> N1
+  N14 --> N1
+  N15 --> N1
+  N16 --> N1
+  N17 --> N1
+  N18 --> N1
+  N19 --> N1
+  N20 --> N1
+  N21 --> N1
+```

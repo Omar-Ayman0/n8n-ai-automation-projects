@@ -250,3 +250,75 @@ These three captures are from a demonstration run with sample certificate data. 
 ## 12. Project Status
 
 Sanitized export of a demonstrated prototype, documented from the workflow file. The export is inactive, contains placeholders instead of resource IDs and has no credential blocks. Its Code nodes and wiring pass **32 offline checks**. Added screenshots show one example of successful PDF generation, Gmail delivery, and an `issued` ledger entry. There is still no saved n8n execution log or independently reproduced end-to-end test in this repository, and **no verified concurrency, catch-up, backfill, or delivery-timeout failure-injection test**. This is a portfolio prototype; no production deployment or business metrics are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/certificate-automation-system.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Course Completion Form"}}
+  N1["Prepare Request"]
+  N2["Valid Request?"]
+  N3[("Log Rejected")]
+  N4[("Check Duplicate")]
+  N5["Already Handled?"]
+  N6["Skip Duplicate"]
+  N7[("Log Pending")]
+  N8["Restore Data"]
+  N9{{"Schedule Nightly 23:00"}}
+  N10[("Read Sheet - Nightly")]
+  N11["Find Pending"]
+  N12{{"Manual Backfill Trigger"}}
+  N13[("Read Sheet - Backfill")]
+  N14["Select Old Certificates"]
+  N15["Set Cert Data"]
+  N16[("Copy Template")]
+  N17[("Fill Template")]
+  N18[("Export PDF")]
+  N19[("Archive PDF in Drive")]
+  N20["Is Backfill?"]
+  N21[("Email Certificate")]
+  N22[("Mark Issued")]
+  N23[("Mark Regenerated")]
+  N24{{"Schedule Sunday 09:00"}}
+  N25[("Read Sheet - Weekly")]
+  N26["Weekly Rows"]
+  N27["Convert to XLSX"]
+  N28[("Email Manager")]
+  N29["Requires Email Delivery?"]
+  N30[("Mark Sending (Before Gmail)")]
+  N31[("Mark Delivery Unknown (Review)")]
+  N0 --> N1
+  N1 --> N2
+  N2 -->|Yes| N4
+  N2 -->|No| N3
+  N4 --> N5
+  N7 --> N8
+  N8 --> N15
+  N9 --> N10
+  N10 --> N11
+  N11 --> N15
+  N12 --> N13
+  N13 --> N14
+  N14 --> N15
+  N15 --> N16
+  N16 --> N17
+  N17 --> N29
+  N18 --> N19
+  N18 --> N20
+  N20 -->|Yes| N23
+  N20 -->|No| N21
+  N21 -->|Yes| N22
+  N21 -->|No| N31
+  N24 --> N25
+  N25 --> N26
+  N26 --> N27
+  N27 --> N28
+  N5 -->|Yes| N6
+  N5 -->|No| N7
+  N29 -->|Yes| N30
+  N29 -->|No| N18
+  N30 --> N18
+```

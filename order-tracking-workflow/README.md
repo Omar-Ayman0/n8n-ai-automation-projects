@@ -133,3 +133,42 @@ A full demonstration package (sample webhook payload, tracking response, success
 ## 12. Project Status
 
 Workflow exported and documented. It was developed against Postman-simulated webhooks; this repository contains no evidence of a live store connection, so none is claimed. Compare real WooCommerce deliveries with the expectations listed in the setup steps before connecting a live store.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/order-tracking-workflow.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Order Webhook"}}
+  N1["Is Order Processing?"]
+  N2["Calculate HMAC Signature"]
+  N3{{"Respond: Ignored"}}
+  N4["Signature Valid?"]
+  N5["Extract Order Fields"]
+  N6["Sanitize Data"]
+  N7[("Update Tracking Sheet")]
+  N8["Update Successful?"]
+  N9[("Send Tracking Email")]
+  N10{{"Respond: Success"}}
+  N11["Build Failure Log"]
+  N12["Build Customer Email"]
+  N13[("Log Failure")]
+  N14{{"Respond: Unauthorized"}}
+  N0 --> N1
+  N1 -->|Yes| N2
+  N1 -->|No| N3
+  N2 --> N4
+  N4 -->|Yes| N5
+  N4 -->|No| N11
+  N5 --> N6
+  N6 --> N7
+  N7 --> N8
+  N8 -->|Yes| N12
+  N8 -->|No| N11
+  N9 --> N10
+  N12 --> N9
+  N11 --> N13
+  N13 --> N14
+```

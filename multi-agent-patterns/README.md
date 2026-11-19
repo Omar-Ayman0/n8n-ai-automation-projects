@@ -123,3 +123,35 @@ multi-agent-patterns/
 ## 12. Project Status
 
 Workflow exported and documented. One pattern is available. The SerpApi tool's search query is not configured in the export, so confirm it before use. No deployment or quality metrics are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/multi-agent-patterns.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Telegram Trigger"}}
+  N1(["Google Gemini Chat Model"])
+  N2(["Supervisor"])
+  N3(["Google Gemini Chat Model1"])
+  N4(["Google Gemini Chat Model2"])
+  N5["Google search in SerpApi"]
+  N6(["Search & Collect Data Agent"])
+  N7(["Data Analyst Agent"])
+  N8[("Send a text message")]
+  N9["Search Agent Memory"]
+  N10["Data Analyst Memory"]
+  N11["Supervisor Memory"]
+  N0 --> N2
+  N1 --> N2
+  N3 --> N6
+  N4 --> N7
+  N5 --> N6
+  N6 --> N2
+  N7 --> N2
+  N2 --> N8
+  N9 --> N6
+  N10 --> N7
+  N11 --> N2
+```

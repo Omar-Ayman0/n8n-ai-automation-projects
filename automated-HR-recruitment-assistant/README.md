@@ -148,3 +148,48 @@ Identified by reading the workflow JSON; test before any production use.
 ## 12. Project Status
 
 Workflow exported and documented, with redacted screenshots from a test run. The known issues above should be tested before production use. No deployment or hiring metrics are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/automated-HR-recruitment-assistant.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"On form submission"}}
+  N1(["AI Agent"])
+  N2["Edit Fields"]
+  N3[("Duplicate Check")]
+  N4["If"]
+  N5[("Duplicated Candidate Message")]
+  N6[("Add To All Candidates Sheet")]
+  N7[("Add To Specific Level Sheet")]
+  N8[("Notify The HR")]
+  N9{{"Telegram Trigger"}}
+  N10["Code in JavaScript"]
+  N11["Accepted / Rejected"]
+  N12[("Accepted Email")]
+  N13[("Rejected Email")]
+  N14[("Update Status To Accepted")]
+  N15[("Update Status To Rejected")]
+  N16[("Get row(s) in sheet")]
+  N17[("Delete Candidate From Level Sheet")]
+  N18(["Google Gemini Chat Model"])
+  N0 --> N3
+  N1 --> N2
+  N2 --> N6
+  N3 --> N4
+  N4 -->|Yes| N5
+  N4 -->|No| N1
+  N6 --> N7
+  N7 --> N8
+  N9 --> N10
+  N10 --> N11
+  N11 -->|Yes| N12
+  N11 -->|No| N13
+  N12 --> N14
+  N13 --> N15
+  N15 --> N16
+  N16 --> N17
+  N18 --> N1
+```

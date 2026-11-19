@@ -178,3 +178,55 @@ Run the offline logic checks with `node tests/run-code-node-tests.js`. These che
 ## 12. Project Status
 
 Prototype exported and demonstrated with a scanned test invoice and human approval. Public workflow sanitized and corrected so `auto_approved` and `approved_by_human` both route to Approved, while only `rejected_by_human` routes to Rejected. Unknown states take a separate no-op branch. The public version has offline logic checks; a live end-to-end run of this exact corrected export has not been performed here. No production deployment, measured accuracy or time savings are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/invoice-processing-system.mmd)
+
+```mermaid
+flowchart LR
+  N0["Identify File Type"]
+  N1["Extract text layer (PDF)"]
+  N2["Has text layer?"]
+  N3["Re-attach original file"]
+  N4["Unsupported file type"]
+  N5[("OCR (OCR.space)")]
+  N6["Normalize & clean text"]
+  N7{{"Receive file (Webhook)"}}
+  N8(["Basic LLM Chain"])
+  N9["Structured Output Parser"]
+  N10(["Google Gemini Chat Model"])
+  N11["Needs human review?"]
+  N12[("Send message and wait for response")]
+  N13["Validate & score"]
+  N14["Build ledger row"]
+  N15[("All Ledgers")]
+  N16["Route ledger status"]
+  N17[("Approved Ledgers")]
+  N18[("Rejected Ledgers")]
+  N19["Pending or unknown status"]
+  N0 -->|Yes| N1
+  N0 -->|Yes| N3
+  N0 -->|No| N5
+  N0 -->|Branch 3| N4
+  N1 --> N3
+  N3 --> N2
+  N2 -->|Yes| N6
+  N2 -->|No| N5
+  N5 --> N6
+  N7 --> N0
+  N6 --> N8
+  N9 --> N8
+  N10 --> N8
+  N8 --> N13
+  N11 -->|Yes| N12
+  N11 -->|No| N14
+  N12 --> N14
+  N13 --> N11
+  N14 --> N15
+  N14 --> N16
+  N16 -->|Yes| N17
+  N16 -->|No| N18
+  N16 -->|Branch 3| N19
+```

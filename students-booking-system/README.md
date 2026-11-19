@@ -146,3 +146,52 @@ This repository contains no real student data, and no screenshots of production 
 ## 12. Project Status
 
 Reported by the author as used in production at a tutoring center. The exported workflow in this repository still needs its Google Sheets credentials and placeholders configured (see Installation). The 500+ registrations figure is author-reported and cannot be verified from the files here.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/students-booking-system.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Google Sheet Trigger"}}
+  N1[("Get row(s) in sheet")]
+  N2["Edit Fields"]
+  N3["Loop Over Items"]
+  N4[("Duplicate Message")]
+  N5["Duplicate Checking Code"]
+  N6[("Append Student in Group")]
+  N7[("Append Student in Duplicate Sheet")]
+  N8[("Conformation Message")]
+  N9[("Get Current Group Data")]
+  N10[("Add Student To Waiting List")]
+  N11[("Waiting List Message")]
+  N12["Duplicated Or Not?"]
+  N13["Have A Seat Or Not?"]
+  N14[("Get row(s) in sheet1")]
+  N15["Group Count Code Node"]
+  N16["Wait"]
+  N17["Wait1"]
+  N18["Wait2"]
+  N0 --> N3
+  N1 --> N5
+  N2 --> N1
+  N3 -->|No| N16
+  N5 --> N12
+  N6 --> N17
+  N7 --> N8
+  N8 --> N3
+  N9 --> N18
+  N10 --> N11
+  N12 -->|Yes| N4
+  N12 -->|No| N9
+  N13 -->|Yes| N10
+  N13 -->|No| N6
+  N14 --> N13
+  N15 --> N14
+  N16 --> N2
+  N4 --> N3
+  N17 --> N7
+  N11 --> N3
+  N18 --> N15
+```

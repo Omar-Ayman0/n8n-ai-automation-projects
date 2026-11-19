@@ -84,3 +84,57 @@ Full instructions: [docs/SETUP.md](docs/SETUP.md).
 ## Engineering provenance
 
 V1 was built for the original client and retained as a separate historical artifact. V2 is a later assisted engineering iteration; functionality should be evaluated from its source, demo and tests rather than from claims of unverified production history. No claim is made that the new V2 code was in the client deployment.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/students-booking-system-v2.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Google Sheet Trigger"}}
+  N1["Loop Over Items"]
+  N2["Prepare Registration"]
+  N3["Valid Input?"]
+  N4[("Atomic Booking — Apps Script")]
+  N5["Prepare Decision & Safe Message"]
+  N6["Confirmed?"]
+  N7["Waitlisted?"]
+  N8["Duplicate?"]
+  N9["Skip Already Processed?"]
+  N10[("Conformation Message")]
+  N11[("Waiting List Message")]
+  N12[("Duplicate Message")]
+  N13[("Operations Alert")]
+  N14[("Invalid Input Alert")]
+  N15[("HTTP Failure Alert")]
+  N16[("Mark Notification SENT")]
+  N17[("Mark Notification FAILED")]
+  N0 --> N1
+  N1 -->|No| N2
+  N2 --> N3
+  N3 -->|Yes| N4
+  N3 -->|No| N14
+  N4 -->|Yes| N5
+  N4 -->|No| N15
+  N5 --> N6
+  N6 -->|Yes| N10
+  N6 -->|No| N7
+  N7 -->|Yes| N11
+  N7 -->|No| N8
+  N8 -->|Yes| N12
+  N8 -->|No| N9
+  N9 -->|Yes| N1
+  N9 -->|No| N13
+  N10 -->|Yes| N16
+  N10 -->|No| N17
+  N11 -->|Yes| N16
+  N11 -->|No| N17
+  N12 -->|Yes| N16
+  N12 -->|No| N17
+  N16 --> N1
+  N17 --> N1
+  N13 --> N1
+  N14 --> N1
+  N15 --> N1
+```

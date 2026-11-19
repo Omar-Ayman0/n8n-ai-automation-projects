@@ -128,3 +128,33 @@ supabase-rag-ai-agent/
 ## 12. Project Status
 
 Workflow exported and documented, with known configuration gaps (see limitations). In particular, `Download file` is fixed to a single Drive file in this export, so automatic ingestion of each new file is not working as exported. No deployment or accuracy metrics are claimed.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/supabase-rag-ai-agent.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Google Drive Trigger"}}
+  N1[("Download file")]
+  N2(["Embeddings Google Gemini"])
+  N3["Default Data Loader"]
+  N4(["AI Agent"])
+  N5(["Google Gemini Chat Model"])
+  N6["Simple Memory"]
+  N7(["Embeddings Google Gemini1"])
+  N8{{"Telegram Trigger"}}
+  N9[("Send a text message")]
+  N10(["Supabase Vector Store"])
+  N11(["Supabase Vector Store1"])
+  N0 --> N1
+  N1 --> N10
+  N2 --> N10
+  N3 --> N10
+  N4 --> N9
+  N6 --> N4
+  N7 --> N11
+  N8 --> N4
+  N11 --> N4
+```

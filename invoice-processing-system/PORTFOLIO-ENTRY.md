@@ -10,12 +10,12 @@ Copy the following section into the existing root README (do not replace the roo
 - **Technologies:** n8n, OCR.space, Google Gemini, JavaScript, Gmail, Google Sheets.
 - **Context:** DEPI AI Automation training project; recorded demo with a scanned test invoice.
 
-[Read the full case study →](invoice-processing-system/README.md)
+[Read the full case study →](README.md)
 
 ## Project Directory row
 
 ```markdown
-| 8 | Intelligent Invoice Processing System | OCR System | [invoice-processing-system](invoice-processing-system/) | Hybrid extraction, structured LLM output, deterministic validation | Human-in-the-loop invoice review · DEPI project |
+| 8 | Intelligent Invoice Processing System | OCR System | [invoice-processing-system](./) | Hybrid extraction, structured LLM output, deterministic validation | Human-in-the-loop invoice review · DEPI project |
 ```
 
 Add `invoice-processing-system/` to the root repository structure tree. The project folder already contains the workflow, case study, samples and tests.

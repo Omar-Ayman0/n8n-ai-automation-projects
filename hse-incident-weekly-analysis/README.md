@@ -170,3 +170,46 @@ Workflow exported and documented. Setup steps above are required before it can r
 5. Menatallah Ibrahim Hassan Muhammed
 
 **Team work vs. individual portfolio ownership.** The workflow design and implementation documented here are the result of team collaboration and are not presented as individual work by the repository owner. This repository is a personal portfolio, and this project is included as a documented team project. Individual responsibilities of team members are not described, because they are not recorded in the repository files.
+
+
+## Architecture Diagram
+
+Source: [Architecture diagram](../assets/diagrams/hse-incident-weekly-analysis.mmd)
+
+```mermaid
+flowchart LR
+  N0{{"Weekly Monday 08:00"}}
+  N1["Get Incident Emails"]
+  N2["Clean and Prepare"]
+  N3["Any Incidents?"]
+  N4(["HSE Incident Analyst"])
+  N5(["Gemini Chat Model"])
+  N6["Get Message"]
+  N7["Get Attachments"]
+  N8["Get Previous Emails"]
+  N9["Incident Output Parser"]
+  N10["Build HTML Report"]
+  N11[("Send Incident Analysis")]
+  N12[("Send No Incidents Email")]
+  N13{{"Manual Test Trigger"}}
+  N14{{"Error Trigger"}}
+  N15[("Gmail: Error Alert")]
+  N16(["OpenRouter Chat Model"])
+  N17["Workflow Config"]
+  N0 --> N17
+  N1 --> N2
+  N2 --> N3
+  N3 -->|Yes| N4
+  N3 -->|No| N12
+  N4 --> N10
+  N5 --> N4
+  N6 --> N4
+  N7 --> N4
+  N8 --> N4
+  N9 --> N4
+  N10 --> N11
+  N13 --> N17
+  N14 --> N15
+  N16 --> N4
+  N17 --> N1
+```
